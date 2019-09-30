@@ -5,9 +5,9 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{821B57FF-8CD1-4FB9-97A0-6D5B7D91AC0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ranger.Services.Templates", "src\Ranger.Services.Templates\Ranger.Services.Templates.csproj", "{E9F9AC87-15B9-4984-B836-D4017692B341}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ranger.Services.Projects", "src\Ranger.Services.Projects\Ranger.Services.Projects.csproj", "{E9F9AC87-15B9-4984-B836-D4017692B341}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ranger.Services.Templates.Data", "src\Ranger.Services.Templates.Data\Ranger.Services.Templates.Data.csproj", "{FFA3A491-1D20-4F27-917E-9D26DAA3AC05}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ranger.Services.Projects.Data", "src\Ranger.Services.Projects.Data\Ranger.Services.Projects.Data.csproj", "{FFA3A491-1D20-4F27-917E-9D26DAA3AC05}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

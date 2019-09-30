@@ -6,13 +6,13 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Ranger.Common;
 
-namespace Ranger.Services.Templates.Data
+namespace Ranger.Services.Projects.Data
 {
-    public class TemplatesDbContextInitializer : ITemplatesDbContextInitializer
+    public class ProjectsDbContextInitializer : IProjectsDbContextInitializer
     {
-        private readonly TemplatesDbContext context;
+        private readonly ProjectsDbContext context;
 
-        public TemplatesDbContextInitializer(TemplatesDbContext context)
+        public ProjectsDbContextInitializer(ProjectsDbContext context)
         {
             this.context = context;
         }
@@ -30,7 +30,7 @@ namespace Ranger.Services.Templates.Data
         public async Task EnsureRowLevelSecurityApplied()
         {
             var tables = Enum.GetNames(typeof(RowLevelSecureTablesEnum));
-            var loginRoleRepository = new LoginRoleRepository<TemplatesDbContext>(context);
+            var loginRoleRepository = new LoginRoleRepository<ProjectsDbContext>(context);
             foreach (var table in tables)
             {
                 await loginRoleRepository.CreateTenantRlsPolicy(table);
@@ -38,7 +38,7 @@ namespace Ranger.Services.Templates.Data
         }
     }
 
-    public interface ITemplatesDbContextInitializer
+    public interface IProjectsDbContextInitializer
     {
         bool EnsureCreated();
         void Migrate();

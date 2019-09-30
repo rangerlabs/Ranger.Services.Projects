@@ -10,4 +10,4 @@ case "$TRAVIS_BRANCH" in
     ;;
 esac
 
-docker build -t rangerlabs/ranger.services.templates:$DOCKER_TAG --build-arg MYGET_API_KEY=$MYGET_KEY .
+docker build -t rangerlabs/ranger.services.projects:$DOCKER_TAG --build-arg MYGET_API_KEY=$MYGET_KEY .

@@ -38,5 +38,5 @@ RUN if [ "${BUILD_CONFIG}" = "Debug" ]; then \
     fi
 ENV DEBIAN_FRONTEND teletype
 
-EXPOSE 8084
-ENTRYPOINT ["dotnet", "Ranger.Services.Templates.dll"]
+EXPOSE 8086
+ENTRYPOINT ["dotnet", "Ranger.Services.Projects.dll"]

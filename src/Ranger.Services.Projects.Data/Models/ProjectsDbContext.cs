@@ -5,11 +5,11 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Ranger.Common;
 
-namespace Ranger.Services.Templates.Data {
-  public class TemplatesDbContext : DbContext, IDataProtectionKeyContext {
+namespace Ranger.Services.Projects.Data {
+  public class ProjectsDbContext : DbContext, IDataProtectionKeyContext {
 
     private readonly IDataProtectionProvider dataProtectionProvider;
-    public TemplatesDbContext (DbContextOptions<TemplatesDbContext> options, IDataProtectionProvider dataProtectionProvider = null) : base (options) {
+    public ProjectsDbContext (DbContextOptions<ProjectsDbContext> options, IDataProtectionProvider dataProtectionProvider = null) : base (options) {
       this.dataProtectionProvider = dataProtectionProvider;
     }
 

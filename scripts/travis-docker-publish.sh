@@ -12,5 +12,5 @@ if [ $TRAVIS_EVENT_TYPE != "pull_request" ]; then
   esac
 
   docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-  docker push rangerlabs/ranger.services.templates:$DOCKER_TAG
+  docker push rangerlabs/ranger.services.projects:$DOCKER_TAG
 fi

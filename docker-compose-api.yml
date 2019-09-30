@@ -1,12 +1,12 @@
-version: "3.5"
+version: '3.5'
 services:
     api:
-        image: ranger.services.templates:dev
-        container_name: templates
+        image: ranger.services.projects:dev
+        container_name: projects
         ports:
-            - "8084:8084"
+            - '8086:8086'
         networks:
-            - templates
+            - projects
             - ranger
 
 networks:
@@ -14,6 +14,6 @@ networks:
         name: ranger-network
         external: true
 
-    templates:
-        name: templates-network
+    projects:
+        name: projects-network
         external: true

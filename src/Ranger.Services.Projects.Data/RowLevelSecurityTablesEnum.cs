@@ -1,3 +1,3 @@
-namespace Ranger.Services.Templates.Data {
+namespace Ranger.Services.Projects.Data {
     public enum RowLevelSecureTablesEnum { }
 }

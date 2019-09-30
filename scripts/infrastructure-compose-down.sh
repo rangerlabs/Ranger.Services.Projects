@@ -1,1 +1,1 @@
-docker-compose -f ./docker-compose-infrastructure.yml -p templates down
+docker-compose -f ./docker-compose-infrastructure.yml -p projects down

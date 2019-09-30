@@ -1,1 +1,1 @@
-dotnet ef migrations add $1 -p ./src/Ranger.Services.Templates.Data/Ranger.Services.Templates.Data.csproj -c TemplateDbContext -s ./src/Ranger.Services.Templates/Ranger.Services.Templates.csproj 
+dotnet ef migrations add $1 -p ./src/Ranger.Services.Projects.Data/Ranger.Services.Projects.Data.csproj -c ProjectsDbContext -s ./src/Ranger.Services.Projects/Ranger.Services.Projects.csproj 

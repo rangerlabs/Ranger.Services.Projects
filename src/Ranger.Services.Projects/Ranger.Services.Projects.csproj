@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <AssemblyName>Ranger.Services.Templates</AssemblyName>
+    <AssemblyName>Ranger.Services.Projects</AssemblyName>
     <OutputType>Exe</OutputType>
-    <PackageId>Ranger.Services.Templates</PackageId>
+    <PackageId>Ranger.Services.Projects</PackageId>
   </PropertyGroup>
   <ItemGroup>
     <None Include="./Certs/*.pfx" CopyToOutputDirectory="PreserveNewest" />
@@ -23,6 +23,6 @@
     <PackageReference Include="Ranger.RabbitMQ" Version="1.1.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Ranger.Services.Templates.Data\Ranger.Services.Templates.Data.csproj" />
+    <ProjectReference Include="..\Ranger.Services.Projects.Data\Ranger.Services.Projects.Data.csproj" />
   </ItemGroup>
 </Project>

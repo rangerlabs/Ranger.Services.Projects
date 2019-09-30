@@ -1,1 +1,1 @@
-docker-compose -f ./docker-compose-api.yml -p templates down
+docker-compose -f ./docker-compose-api.yml -p projects down

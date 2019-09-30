@@ -1,27 +1,17 @@
-version: "3.5"
+version: '3.5'
 services:
     postgres:
         image: postgres:9.6
-        container_name: template_postgres
+        container_name: projects_postgres
         environment:
             - POSTGRES_USER=postgres
             - POSTGRES_PASSWORD=postgres
         ports:
-            - "5432:5432"
+            - '5432:5432'
         networks:
             - ranger
         volumes:
             - postgres:/data/db
-    # redis:
-    #     image: redis
-    #     container_name: template_redis
-    #     ports:
-    #         - "6379:6379"
-    #     networks:
-    #         - ranger
-    #     # network_mode: host
-    #     volumes:
-    #         - redis:/data
 
 networks:
     ranger:
@@ -30,6 +20,4 @@ networks:
 
 volumes:
     postgres:
-        driver: local
-    redis:
         driver: local

@@ -1,1 +1,1 @@
-docker-compose -f ./docker-compose-infrastructure.yml -p templates up -d
+docker-compose -f ./docker-compose-infrastructure.yml -p projects up -d

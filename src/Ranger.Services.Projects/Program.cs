@@ -11,9 +11,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Ranger.Logging;
-using Ranger.Services.Templates.Data;
+using Ranger.Services.Projects.Data;
 
-namespace Ranger.Services.Templates {
+namespace Ranger.Services.Projects {
     public class Program {
         public static void Main (string[] args) {
             var config = new ConfigurationBuilder ()
@@ -26,7 +26,7 @@ namespace Ranger.Services.Templates {
             var host = CreateWebHostBuilder (config["serverBindingUrl"], args).Build ();
 
             using (var scope = host.Services.CreateScope ()) {
-                var dbInitializer = scope.ServiceProvider.GetRequiredService<ITemplatesDbContextInitializer> ();
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<IProjectsDbContextInitializer> ();
                 var env = scope.ServiceProvider.GetRequiredService<IHostingEnvironment> ();
 
                 dbInitializer.Migrate ();
