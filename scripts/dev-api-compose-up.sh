@@ -1,0 +1,1 @@
+docker-compose -f ./docker-compose-api.yml -f ./docker-compose-api.dev.yml -p templates up -d

@@ -1,0 +1,1 @@
+dotnet ef database update -p ./src/Ranger.Services.Templates.Data/Ranger.Services.Templates.Data.csproj -c TemplateDbContext -s ./src/Ranger.Services.Templates/Ranger.Services.Templates.csproj 
