@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
 using Ranger.Common;
+using Ranger.InternalHttpClient;
 using Ranger.RabbitMQ;
 using Ranger.Services.Projects.Data;
 
@@ -37,7 +38,7 @@ namespace Ranger.Services.Projects
         {
             services.AddMvcCore(options =>
             {
-                var policy = ScopePolicy.Create("notificationScope");
+                var policy = ScopePolicy.Create("projectsApi");
                 options.Filters.Add(new AuthorizeFilter(policy));
             })
                 .AddAuthorization()
@@ -48,12 +49,18 @@ namespace Ranger.Services.Projects
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
 
-            services.AddEntityFrameworkNpgsql().AddDbContext<ProjectsDbContext>(options =>
+            services.AddEntityFrameworkNpgsql().AddDbContext<ProjectsDbContext>((serviceProvider, options) =>
             {
                 options.UseNpgsql(configuration["cloudSql:ConnectionString"]);
             },
                 ServiceLifetime.Transient
             );
+
+            services.AddSingleton<ITenantsClient, TenantsClient>(provider =>
+                {
+                    return new TenantsClient("http://tenants:8082", loggerFactory.CreateLogger<TenantsClient>());
+                });
+
 
             services.AddTransient<IProjectsDbContextInitializer, ProjectsDbContextInitializer>();
             services.AddTransient<ILoginRoleRepository<ProjectsDbContext>, LoginRoleRepository<ProjectsDbContext>>();
@@ -75,6 +82,9 @@ namespace Ranger.Services.Projects
 
             var builder = new ContainerBuilder();
             builder.Populate(services);
+            builder.RegisterInstance<CloudSqlOptions>(configuration.GetOptions<CloudSqlOptions>("cloudSql"));
+            builder.RegisterType<ProjectsDbContext>().InstancePerDependency();
+            builder.RegisterAssemblyTypes(typeof(BaseRepository<>).Assembly).AsClosedTypesOf(typeof(BaseRepository<>)).InstancePerDependency();
             builder.AddRabbitMq(loggerFactory);
             container = builder.Build();
             return new AutofacServiceProvider(container);
@@ -85,7 +95,13 @@ namespace Ranger.Services.Projects
             applicationLifetime.ApplicationStopping.Register(OnShutdown);
             app.UseAuthentication();
             app.UseMvcWithDefaultRoute();
-            this.busSubscriber = app.UseRabbitMQ();
+            this.busSubscriber = app.UseRabbitMQ()
+                .SubscribeCommand<InitializeTenant>((c, e) =>
+                   new InitializeTenantRejected(e.Message, "")
+                )
+                .SubscribeCommand<CreateProject>((c, ex) =>
+                    new CreateProjectRejected(ex.Message, "")
+                );
         }
 
         private void OnShutdown()
