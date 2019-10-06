@@ -39,7 +39,7 @@ namespace Ranger.Services.Projects
             {
                 if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
                 {
-                    return NotFound(new { error = $"No tenant was foud for domain '{projectModel.Domain}'." });
+                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
                 }
             }
             catch (Exception ex)
@@ -66,10 +66,10 @@ namespace Ranger.Services.Projects
                 var postgresException = ex.InnerException as PostgresException;
                 if (postgresException.SqlState == "23505")
                 {
-                    return Conflict(new { error = $"Project Name '${projectModel.Name}' is associated with an existing project for domain '{projectModel.Domain}'." });
+                    return Conflict(new { error = $"Project Name '${projectModel.Name}' is associated with an existing project for domain '{domain}'." });
                 }
             }
-            return Ok(new ProjectCreated(projectModel.Domain, project.Name, project.Description, project.ApiKey.ToString()));
+            return Ok(new ProjectCreated(domain, project.Name, project.Description, project.ApiKey.ToString()));
         }
     }
 }

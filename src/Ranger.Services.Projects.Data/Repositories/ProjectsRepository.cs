@@ -25,7 +25,7 @@ namespace Ranger.Services.Projects.Data
 
         public async Task AddProjectAsync(Project project)
         {
-            await Context.AddAsync(project);
+            Context.Add(project);
             await Context.SaveChangesAsync();
         }
 

@@ -1,9 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Ranger.Services.Projects
 {
     public class ProjectModel
     {
-        public string Domain { get; set; }
+        [Required]
         public string UserEmail { get; set; }
+        [Required]
         public string Name { get; set; }
         public string Description { get; set; }
     }
