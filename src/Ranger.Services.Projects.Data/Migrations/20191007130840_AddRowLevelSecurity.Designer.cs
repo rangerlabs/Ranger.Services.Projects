@@ -10,7 +10,7 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191007041643_AddRowLevelSecurity")]
+    [Migration("20191007130840_AddRowLevelSecurity")]
     partial class AddRowLevelSecurity
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -87,7 +87,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasIndex("Domain", "ProjectId")
                         .IsUnique();
 
-                    b.HasIndex("Domain", "Version")
+                    b.HasIndex("ProjectId", "Version")
                         .IsUnique();
 
                     b.ToTable("project_streams");

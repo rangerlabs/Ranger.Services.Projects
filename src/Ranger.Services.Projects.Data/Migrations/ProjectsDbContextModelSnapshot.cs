@@ -85,7 +85,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasIndex("Domain", "ProjectId")
                         .IsUnique();
 
-                    b.HasIndex("Domain", "Version")
+                    b.HasIndex("ProjectId", "Version")
                         .IsUnique();
 
                     b.ToTable("project_streams");

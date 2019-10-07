@@ -51,9 +51,9 @@ namespace Ranger.Services.Projects.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_streams_domain_version",
+                name: "IX_project_streams_project_id_version",
                 table: "project_streams",
-                columns: new[] { "domain", "version" },
+                columns: new[] { "project_id", "version" },
                 unique: true);
         }
 

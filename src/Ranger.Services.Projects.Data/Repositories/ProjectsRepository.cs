@@ -89,11 +89,7 @@ namespace Ranger.Services.Projects.Data
         public async Task RemoveProjectAsync(string domain, string projectId)
         {
             Guid parsedProjectId = ParseGuid(projectId);
-            var streamId = await Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == parsedProjectId).Select(ps => ps.StreamId).FirstOrDefaultAsync();
-            if (streamId != null)
-            {
-                Context.RemoveRange(Context.ProjectStreams.Where(ps => ps.StreamId == streamId));
-            }
+            Context.RemoveRange(Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == parsedProjectId));
             await Context.SaveChangesAsync();
         }
 

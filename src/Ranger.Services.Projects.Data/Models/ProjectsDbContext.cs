@@ -60,7 +60,7 @@ namespace Ranger.Services.Projects.Data
                 encryptionHelper?.SetEncrytedPropertyAccessMode(entity);
             }
 
-            modelBuilder.Entity<ProjectStream>().HasIndex(p => new { p.Domain, p.Version }).IsUnique(); //Index to ensure uniqueness on writes
+            modelBuilder.Entity<ProjectStream>().HasIndex(p => new { p.ProjectId, p.Version }).IsUnique(); //Index to ensure uniqueness on writes
             modelBuilder.Entity<ProjectStream>().HasIndex(p => new { p.Domain, p.ProjectId }).IsUnique(); //Index for efficient read access
         }
     }
