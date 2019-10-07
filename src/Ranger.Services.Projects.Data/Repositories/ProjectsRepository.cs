@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Npgsql;
 using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
@@ -128,11 +127,11 @@ namespace Ranger.Services.Projects.Data
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(domain, project.ProjectId);
             if (project.Version - currentProjectStream.Version > 1)
             {
-                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the requested update was '{project.Version}'.");
+                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
             }
             if (project.Version - currentProjectStream.Version <= 0)
             {
-                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the requested update was '{project.Version}'.");
+                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
             }
 
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
@@ -155,7 +154,18 @@ namespace Ranger.Services.Projects.Data
             };
 
             Context.ProjectStreams.Add(projectStreamUpdate);
-            await Context.SaveChangesAsync();
+            try
+            {
+                await Context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var postgresException = ex.InnerException as PostgresException;
+                if (postgresException.SqlState == "23505")
+                {
+                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
+                }
+            }
         }
     }
 }

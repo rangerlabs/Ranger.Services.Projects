@@ -37,47 +37,58 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.ToTable("data_protection_keys");
                 });
 
-            modelBuilder.Entity("Ranger.Services.Projects.Data.Project", b =>
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnName("id");
 
                     b.Property<Guid>("ApiKey")
                         .HasColumnName("api_key");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnName("created_by");
-
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
                         .HasColumnName("database_username");
 
-                    b.Property<string>("Description")
-                        .HasColumnName("description");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnName("enabled");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("Domain")
                         .IsRequired()
-                        .HasColumnName("name")
-                        .HasMaxLength(140);
+                        .HasColumnName("domain")
+                        .HasMaxLength(28);
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnName("event");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnName("inserted_at");
+
+                    b.Property<string>("InsertedBy")
+                        .IsRequired()
+                        .HasColumnName("inserted_by");
+
+                    b.Property<string>("ProjectData")
+                        .IsRequired()
+                        .HasColumnName("project_data");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("StreamId")
+                        .HasColumnName("stream_id");
+
+                    b.Property<int>("Version")
+                        .HasColumnName("version");
 
                     b.HasKey("Id")
-                        .HasName("pk_projects");
+                        .HasName("pk_project_streams");
 
-                    b.HasIndex("ApiKey")
+                    b.HasIndex("Domain", "ProjectId")
                         .IsUnique();
 
-                    b.HasIndex("Id", "Name")
+                    b.HasIndex("Domain", "Version")
                         .IsUnique();
 
-                    b.ToTable("projects");
+                    b.ToTable("project_streams");
                 });
 #pragma warning restore 612, 618
         }
