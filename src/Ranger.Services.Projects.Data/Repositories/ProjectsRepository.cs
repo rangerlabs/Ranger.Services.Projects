@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
@@ -23,18 +27,51 @@ namespace Ranger.Services.Projects.Data
             this.logger = logger;
         }
 
-        public async Task AddProjectAsync(Project project)
+        public async Task AddProjectAsync(string domain, string userEmail, string eventName, Project project)
         {
-            Context.Add(project);
+            var serializedNewProjectData = JsonConvert.SerializeObject(project);
+            var newProjectStream = new ProjectStream()
+            {
+                StreamId = Guid.NewGuid(),
+                Domain = domain,
+                ProjectId = project.ProjectId,
+                ApiKey = project.ApiKey,
+                Version = project.Version,
+                ProjectData = serializedNewProjectData,
+                Event = eventName,
+                InsertedAt = DateTime.UtcNow,
+                InsertedBy = userEmail,
+            };
+            Context.ProjectStreams.Add(newProjectStream);
             await Context.SaveChangesAsync();
         }
 
-        public async Task<Project> GetProjectByNameAsync(string name)
+        public async Task<IEnumerable<Project>> GetAllProjects()
         {
-            return await Context.Projects.SingleOrDefaultAsync(p => p.Name == name);
+            var projectStreams = await Context.ProjectStreams.GroupBy(ps => ps.StreamId).Select(group => group.OrderByDescending(ps => ps.Version).First()).ToListAsync();
+            List<Project> projects = new List<Project>();
+            foreach (var projectStream in projectStreams)
+            {
+                projects.Add(JsonConvert.DeserializeObject<Project>(projectStream.ProjectData));
+            }
+            return projects;
+        }
+
+        public async Task<Project> GetProjectByProjectIdAsync(string domain, string projectId)
+        {
+            Guid parsedProjectId = ParseGuid(projectId);
+            var projectStream = await Context.ProjectStreams.Where(p => p.Domain == domain && p.ProjectId == parsedProjectId).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
+            return JsonConvert.DeserializeObject<Project>(projectStream.ProjectData);
         }
 
         public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
+        {
+            Guid parsedApiKey = ParseGuid(apiKey);
+            var projectStream = await Context.ProjectStreams.Where(p => p.ApiKey == parsedApiKey).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
+            return JsonConvert.DeserializeObject<Project>(projectStream.ProjectData);
+        }
+
+        private Guid ParseGuid(string apiKey)
         {
             Guid parsedApiKey;
             try
@@ -46,19 +83,78 @@ namespace Ranger.Services.Projects.Data
                 logger.LogError($"Failed to parse api key '{apiKey}' to a GUID.");
                 throw;
             }
-            return await Context.Projects.SingleOrDefaultAsync(p => p.ApiKey == parsedApiKey);
+
+            return parsedApiKey;
         }
 
-        public async Task RemoveProjectAsync(string name)
+        public async Task RemoveProjectAsync(string domain, string projectId)
         {
-            var project = await GetProjectByNameAsync(name);
-            Context.Remove(project);
+            Guid parsedProjectId = ParseGuid(projectId);
+            var streamId = await Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == parsedProjectId).Select(ps => ps.StreamId).FirstOrDefaultAsync();
+            if (streamId != null)
+            {
+                Context.RemoveRange(Context.ProjectStreams.Where(ps => ps.StreamId == streamId));
+            }
             await Context.SaveChangesAsync();
         }
 
-        public async Task UpdateProjectAsync(Project project)
+        private async Task<ProjectStream> GetProjectStreamByProjectIdAsync(string domain, Guid projectId)
         {
-            Context.Update(project);
+            return await Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == projectId).FirstOrDefaultAsync();
+        }
+
+        public async Task UpdateProjectAsync(string domain, string userEmail, string eventName, Project project)
+        {
+            if (string.IsNullOrWhiteSpace(domain))
+            {
+                throw new ArgumentException($"{nameof(domain)} was null or whitespace.");
+            }
+
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+            }
+
+            if (string.IsNullOrWhiteSpace(eventName))
+            {
+                throw new ArgumentException($"{nameof(eventName)} was null or whitespace.");
+            }
+
+            if (project is null)
+            {
+                throw new ArgumentNullException(nameof(project));
+            }
+
+            var currentProjectStream = await GetProjectStreamByProjectIdAsync(domain, project.ProjectId);
+            if (project.Version - currentProjectStream.Version > 1)
+            {
+                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the requested update was '{project.Version}'.");
+            }
+            if (project.Version - currentProjectStream.Version <= 0)
+            {
+                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the requested update was '{project.Version}'.");
+            }
+
+            var serializedNewProjectData = JsonConvert.SerializeObject(project);
+            if (serializedNewProjectData == currentProjectStream.ProjectData)
+            {
+                throw new NoOpException("No changes were made from the previous version.");
+            }
+
+            var projectStreamUpdate = new ProjectStream()
+            {
+                StreamId = currentProjectStream.StreamId,
+                Domain = currentProjectStream.Domain,
+                ProjectId = currentProjectStream.ProjectId,
+                ApiKey = currentProjectStream.ApiKey,
+                Version = currentProjectStream.Version++,
+                ProjectData = serializedNewProjectData,
+                Event = eventName,
+                InsertedAt = DateTime.UtcNow,
+                InsertedBy = userEmail,
+            };
+
+            Context.ProjectStreams.Add(projectStreamUpdate);
             await Context.SaveChangesAsync();
         }
     }

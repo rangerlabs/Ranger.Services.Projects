@@ -17,7 +17,7 @@ namespace Ranger.Services.Projects.Data
         }
 
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
-        public DbSet<Project> Projects { get; set; }
+        public DbSet<ProjectStream> ProjectStreams { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,8 +60,8 @@ namespace Ranger.Services.Projects.Data
                 encryptionHelper?.SetEncrytedPropertyAccessMode(entity);
             }
 
-            modelBuilder.Entity<Project>().HasIndex(p => new { p.Id, p.Name }).IsUnique();
-            modelBuilder.Entity<Project>().HasIndex(p => p.ApiKey).IsUnique();
+            modelBuilder.Entity<ProjectStream>().HasIndex(p => new { p.Domain, p.Version }).IsUnique(); //Index to ensure uniqueness on writes
+            modelBuilder.Entity<ProjectStream>().HasIndex(p => new { p.Domain, p.ProjectId }).IsUnique(); //Index for efficient read access
         }
     }
 }

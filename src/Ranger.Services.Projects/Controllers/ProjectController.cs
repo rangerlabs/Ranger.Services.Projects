@@ -18,17 +18,18 @@ namespace Ranger.Services.Projects
         private readonly ITenantsClient tenantsClient;
         private readonly IBusPublisher busPublisher;
         private readonly ProjectsRepository.Factory projectsRepositoryFactory;
-        private readonly ILogger<CreateProjectHandler> logger;
+        private readonly ILogger<ProjectController> logger;
 
-        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectsRepository.Factory projectsRepositoryFactory, ILogger<CreateProjectHandler> logger)
+        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectsRepository.Factory projectsRepositoryFactory, ILogger<ProjectController> logger)
         {
             this.busPublisher = busPublisher;
             this.tenantsClient = tenantsClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
             this.logger = logger;
         }
-        [HttpPost("{domain}/project")]
-        public async Task<IActionResult> PostProject([FromRoute]string domain, ProjectModel projectModel)
+
+        [HttpGet("{domain}/project/all")]
+        public async Task<IActionResult> GetProjects([FromRoute]string domain)
         {
             ContextTenant tenant = null;
             try
@@ -49,17 +50,99 @@ namespace Ranger.Services.Projects
             }
 
             var repo = projectsRepositoryFactory.Invoke(tenant);
+            return Ok(await repo.GetAllProjects());
+        }
+
+        [HttpPut("{domain}/project/{projectId}")]
+        public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] string projectId, PutProjectModel projectModel)
+        {
+            ContextTenant tenant = null;
+            try
+            {
+                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+            }
+            catch (HttpClientException ex)
+            {
+                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
+                }
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            var repo = projectsRepositoryFactory.Invoke(tenant);
+            var project = await repo.GetProjectByProjectIdAsync(domain, projectId);
+            if (project is null)
+            {
+                return NotFound();
+            }
+            var updatedProject = new Project
+            {
+                Name = projectModel.Name,
+                Description = projectModel.Description,
+                Enabled = projectModel.Enabled,
+                Version = projectModel.Version
+            };
+
+            try
+            {
+                await repo.UpdateProjectAsync(domain, User.UserFromClaims().Email, "ProjectUpdated", updatedProject);
+            }
+            catch (ConcurrencyException ex)
+            {
+                logger.LogError(ex.Message);
+                return Conflict(new { error = ex.Message });
+            }
+            catch (NoOpException ex)
+            {
+                logger.LogInformation(ex.Message);
+                return StatusCode(StatusCodes.Status304NotModified);
+            }
+            return Ok(new ProjectResponseModel(domain, project.ProjectId, project.Name, project.Description, project.ApiKey.ToString(), project.Enabled));
+        }
+
+        [HttpPost("{domain}/project")]
+        public async Task<IActionResult> PostProject([FromRoute]string domain, PostProjectModel projectModel)
+        {
+            ContextTenant tenant = null;
+            try
+            {
+                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+            }
+            catch (HttpClientException ex)
+            {
+                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
+                }
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            var repo = projectsRepositoryFactory.Invoke(tenant);
+            return await AddNewProject(domain, projectModel, repo);
+        }
+
+        private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, ProjectsRepository repo)
+        {
             var project = new Project
             {
                 Name = projectModel.Name,
                 Description = projectModel.Description,
                 ApiKey = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow,
-                CreatedBy = projectModel.UserEmail
+                Version = 0,
+                Enabled = projectModel.Enabled
             };
             try
             {
-                await repo.AddProjectAsync(project);
+                await repo.AddProjectAsync(domain, User.UserFromClaims().Email, "ProjectCreated", project);
             }
             catch (DbUpdateException ex)
             {
@@ -69,7 +152,7 @@ namespace Ranger.Services.Projects
                     return Conflict(new { error = $"Project Name '${projectModel.Name}' is associated with an existing project for domain '{domain}'." });
                 }
             }
-            return Ok(new ProjectCreated(domain, project.Name, project.Description, project.ApiKey.ToString()));
+            return Ok(new ProjectResponseModel(domain, project.ProjectId, project.Name, project.Description, project.ApiKey.ToString(), project.Enabled));
         }
     }
 }

@@ -1,14 +1,15 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
     public interface IProjectsRepository : IRepository
     {
-        Task AddProjectAsync(Project project);
+        Task AddProjectAsync(string domain, string userEmail, string eventName, Project project);
+        Task<IEnumerable<Project>> GetAllProjects();
         Task<Project> GetProjectByApiKeyAsync(string apiKey);
-        Task<Project> GetProjectByNameAsync(string name);
-        Task RemoveProjectAsync(string name);
-        Task UpdateProjectAsync(Project project);
+        Task<Project> GetProjectByProjectIdAsync(string domain, string projectId);
+        Task RemoveProjectAsync(string domain, string projectId);
+        Task UpdateProjectAsync(string domain, string userEmail, string eventName, Project project);
     }
 }
