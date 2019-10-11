@@ -134,11 +134,12 @@ namespace Ranger.Services.Projects
         {
             var project = new Project
             {
-                Name = projectModel.Name,
-                Description = projectModel.Description,
-                ApiKey = Guid.NewGuid(),
                 Version = 0,
-                Enabled = projectModel.Enabled
+                ProjectId = Guid.NewGuid(),
+                Name = projectModel.Name,
+                ApiKey = Guid.NewGuid(),
+                Enabled = projectModel.Enabled,
+                Description = projectModel.Description
             };
             try
             {

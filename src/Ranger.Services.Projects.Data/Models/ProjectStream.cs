@@ -5,8 +5,15 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectStream : RowLevelSecurityDbSet
+    public class ProjectStream<TDataType> : IRowLevelSecurityDbSet, IEventStreamDbSet<TDataType>
     {
+        [Required]
+        public Guid ProjectId { get; set; }
+        [Required]
+        public Guid ApiKey { get; set; }
+        [Required]
+        public string DatabaseUsername { get; set; }
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
@@ -15,13 +22,10 @@ namespace Ranger.Services.Projects.Data
         [StringLength(28)]
         public string Domain { get; set; }
         [Required]
-        public Guid ProjectId { get; set; }
-        [Required]
-        public Guid ApiKey { get; set; }
-        [Required]
         public int Version { get; set; }
         [Required]
-        public string ProjectData { get; set; }
+        [Column(TypeName = "jsonb")]
+        public string Data { get; set; }
         [Required]
         public string Event { get; set; }
         [Required]

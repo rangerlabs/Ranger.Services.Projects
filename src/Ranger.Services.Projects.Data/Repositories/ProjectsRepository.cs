@@ -29,14 +29,14 @@ namespace Ranger.Services.Projects.Data
         public async Task AddProjectAsync(string domain, string userEmail, string eventName, Project project)
         {
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
-            var newProjectStream = new ProjectStream()
+            var newProjectStream = new ProjectStream<Project>()
             {
                 StreamId = Guid.NewGuid(),
                 Domain = domain,
                 ProjectId = project.ProjectId,
                 ApiKey = project.ApiKey,
                 Version = project.Version,
-                ProjectData = serializedNewProjectData,
+                Data = serializedNewProjectData,
                 Event = eventName,
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
@@ -51,7 +51,7 @@ namespace Ranger.Services.Projects.Data
             List<Project> projects = new List<Project>();
             foreach (var projectStream in projectStreams)
             {
-                projects.Add(JsonConvert.DeserializeObject<Project>(projectStream.ProjectData));
+                projects.Add(JsonConvert.DeserializeObject<Project>(projectStream.Data));
             }
             return projects;
         }
@@ -60,14 +60,14 @@ namespace Ranger.Services.Projects.Data
         {
             Guid parsedProjectId = ParseGuid(projectId);
             var projectStream = await Context.ProjectStreams.Where(p => p.Domain == domain && p.ProjectId == parsedProjectId).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
-            return JsonConvert.DeserializeObject<Project>(projectStream.ProjectData);
+            return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
         public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
         {
             Guid parsedApiKey = ParseGuid(apiKey);
             var projectStream = await Context.ProjectStreams.Where(p => p.ApiKey == parsedApiKey).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
-            return JsonConvert.DeserializeObject<Project>(projectStream.ProjectData);
+            return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
         private Guid ParseGuid(string apiKey)
@@ -93,7 +93,7 @@ namespace Ranger.Services.Projects.Data
             await Context.SaveChangesAsync();
         }
 
-        private async Task<ProjectStream> GetProjectStreamByProjectIdAsync(string domain, Guid projectId)
+        private async Task<ProjectStream<Project>> GetProjectStreamByProjectIdAsync(string domain, Guid projectId)
         {
             return await Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == projectId).FirstOrDefaultAsync();
         }
@@ -131,19 +131,19 @@ namespace Ranger.Services.Projects.Data
             }
 
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
-            if (serializedNewProjectData == currentProjectStream.ProjectData)
+            if (serializedNewProjectData == currentProjectStream.Data)
             {
                 throw new NoOpException("No changes were made from the previous version.");
             }
 
-            var projectStreamUpdate = new ProjectStream()
+            var projectStreamUpdate = new ProjectStream<Project>()
             {
                 StreamId = currentProjectStream.StreamId,
                 Domain = currentProjectStream.Domain,
                 ProjectId = currentProjectStream.ProjectId,
                 ApiKey = currentProjectStream.ApiKey,
                 Version = currentProjectStream.Version++,
-                ProjectData = serializedNewProjectData,
+                Data = serializedNewProjectData,
                 Event = eventName,
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
