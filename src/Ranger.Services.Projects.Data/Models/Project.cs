@@ -3,7 +3,6 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-
     public class Project : IProject
     {
         public Guid ProjectId { get; set; }
