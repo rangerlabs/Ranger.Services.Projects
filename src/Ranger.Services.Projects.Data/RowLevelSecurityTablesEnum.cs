@@ -2,6 +2,6 @@ namespace Ranger.Services.Projects.Data
 {
     public enum RowLevelSecureTablesEnum
     {
-        projects
+        project_streams
     }
 }

@@ -10,8 +10,8 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191007130827_Initial")]
-    partial class Initial
+    [Migration("20191011194938_AddJsonbIndices")]
+    partial class AddJsonbIndices
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -39,14 +39,16 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.ToTable("data_protection_keys");
                 });
 
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnName("id");
 
-                    b.Property<Guid>("ApiKey")
-                        .HasColumnName("api_key");
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnName("data")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
@@ -67,10 +69,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.Property<string>("InsertedBy")
                         .IsRequired()
                         .HasColumnName("inserted_by");
-
-                    b.Property<string>("ProjectData")
-                        .IsRequired()
-                        .HasColumnName("project_data");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnName("project_id");

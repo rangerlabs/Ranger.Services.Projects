@@ -28,13 +28,12 @@ namespace Ranger.Services.Projects.Data.Migrations
                 {
                     id = table.Column<int>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    project_id = table.Column<Guid>(nullable: false),
                     database_username = table.Column<string>(nullable: false),
                     stream_id = table.Column<Guid>(nullable: false),
                     domain = table.Column<string>(maxLength: 28, nullable: false),
-                    project_id = table.Column<Guid>(nullable: false),
-                    api_key = table.Column<Guid>(nullable: false),
                     version = table.Column<int>(nullable: false),
-                    project_data = table.Column<string>(nullable: false),
+                    data = table.Column<string>(type: "jsonb", nullable: false),
                     @event = table.Column<string>(name: "event", nullable: false),
                     inserted_at = table.Column<DateTime>(nullable: false),
                     inserted_by = table.Column<string>(nullable: false)

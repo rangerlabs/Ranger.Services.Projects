@@ -27,37 +27,7 @@ namespace Ranger.Services.Projects.Data
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<ProjectStream<Project>> ProjectStreams { get; set; }
 
-        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var changedEntities = ChangeTracker
-                .Entries()
-                .Where(_ => _.State == EntityState.Added ||
-                            _.State == EntityState.Modified);
 
-            var (isValid, errors) = Ranger.Services.Projects.Data.JsonUniqueConstraintDbHelper.ValidateAgainstDbContext(changedEntities, this);
-            if (isValid)
-            {
-                return await base.SaveChangesAsync(true, cancellationToken);
-            }
-            return await Task.FromResult<int>(0);
-        }
-
-
-
-        public override int SaveChanges()
-        {
-            var changedEntities = ChangeTracker
-                .Entries()
-                .Where(_ => _.State == EntityState.Added ||
-                            _.State == EntityState.Modified);
-
-            var (isValid, errors) = Ranger.Services.Projects.Data.JsonUniqueConstraintDbHelper.ValidateAgainstDbContext(changedEntities, this);
-            if (isValid)
-            {
-                return base.SaveChanges();
-            }
-            else return 0;
-        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

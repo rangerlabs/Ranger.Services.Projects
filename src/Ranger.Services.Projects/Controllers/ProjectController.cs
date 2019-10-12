@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Ranger.Common;
+using Ranger.Common.Data.Exceptions;
 using Ranger.InternalHttpClient;
 using Ranger.RabbitMQ;
 using Ranger.Services.Projects.Data;
@@ -40,7 +41,7 @@ namespace Ranger.Services.Projects
             {
                 if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
                 {
-                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
+                    return NotFound();
                 }
             }
             catch (Exception ex)
@@ -65,7 +66,9 @@ namespace Ranger.Services.Projects
             {
                 if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
                 {
-                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
+                    var errors = new ApiErrorContent();
+                    errors.Errors.Add($"No tenant was foud for domain '{domain}'.");
+                    return NotFound(errors);
                 }
             }
             catch (Exception ex)
@@ -95,7 +98,9 @@ namespace Ranger.Services.Projects
             catch (ConcurrencyException ex)
             {
                 logger.LogError(ex.Message);
-                return Conflict(new { error = ex.Message });
+                var errors = new ApiErrorContent();
+                errors.Errors.Add(ex.Message);
+                return Conflict(errors);
             }
             catch (NoOpException ex)
             {
@@ -117,7 +122,7 @@ namespace Ranger.Services.Projects
             {
                 if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
                 {
-                    return NotFound(new { error = $"No tenant was foud for domain '{domain}'." });
+                    return NotFound(ex.ApiResponse.Errors);
                 }
             }
             catch (Exception ex)
@@ -139,20 +144,25 @@ namespace Ranger.Services.Projects
                 Name = projectModel.Name,
                 ApiKey = Guid.NewGuid(),
                 Enabled = projectModel.Enabled,
-                Description = projectModel.Description
+                Description = projectModel.Description,
             };
             try
             {
                 await repo.AddProjectAsync(domain, User.UserFromClaims().Email, "ProjectCreated", project);
             }
-            catch (DbUpdateException ex)
+            catch (EventStreamDataConstraintException ex)
             {
-                var postgresException = ex.InnerException as PostgresException;
-                if (postgresException.SqlState == "23505")
-                {
-                    return Conflict(new { error = $"Project Name '${projectModel.Name}' is associated with an existing project for domain '{domain}'." });
-                }
+                logger.LogError(ex, "Failed to save project stream because a constraint was violated in the Data property.");
+                var errors = new ApiErrorContent();
+                errors.Errors.Add(ex.Message);
+                return Conflict(errors);
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to save project stream.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
             return Ok(new ProjectResponseModel(domain, project.ProjectId, project.Name, project.Description, project.ApiKey.ToString(), project.Enabled));
         }
     }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Npgsql;
 using Ranger.Common;
+using Ranger.Common.Data.Exceptions;
 
 namespace Ranger.Services.Projects.Data
 {
@@ -31,10 +32,10 @@ namespace Ranger.Services.Projects.Data
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
             var newProjectStream = new ProjectStream<Project>()
             {
+                DatabaseUsername = this.contextTenant.DatabaseUsername,
                 StreamId = Guid.NewGuid(),
                 Domain = domain,
                 ProjectId = project.ProjectId,
-                ApiKey = project.ApiKey,
                 Version = project.Version,
                 Data = serializedNewProjectData,
                 Event = eventName,
@@ -42,7 +43,34 @@ namespace Ranger.Services.Projects.Data
                 InsertedBy = userEmail,
             };
             Context.ProjectStreams.Add(newProjectStream);
-            await Context.SaveChangesAsync();
+            try
+            {
+                await Context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var postgresException = ex.InnerException as PostgresException;
+                if (postgresException.SqlState == "23505")
+                {
+                    var uniqueIndexViolation = postgresException.ConstraintName;
+                    switch (uniqueIndexViolation)
+                    {
+                        case ProjectJsonbConstraintNames.Name:
+                            {
+                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                            }
+                        case ProjectJsonbConstraintNames.ProjectId:
+                            {
+                                throw new EventStreamDataConstraintException("The project id is in use by another project.");
+                            }
+                        case ProjectJsonbConstraintNames.ApiKey:
+                            {
+                                throw new EventStreamDataConstraintException("The project API key is in use by another project.");
+                            }
+                    }
+                }
+                throw;
+            }
         }
 
         public async Task<IEnumerable<Project>> GetAllProjects()
@@ -65,8 +93,7 @@ namespace Ranger.Services.Projects.Data
 
         public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
         {
-            Guid parsedApiKey = ParseGuid(apiKey);
-            var projectStream = await Context.ProjectStreams.Where(p => p.ApiKey == parsedApiKey).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
+            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data -> 'ApiKey' = {apiKey} ORDER BY Version DESC").SingleAsync();
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
@@ -138,10 +165,10 @@ namespace Ranger.Services.Projects.Data
 
             var projectStreamUpdate = new ProjectStream<Project>()
             {
+                DatabaseUsername = this.contextTenant.DatabaseUsername,
                 StreamId = currentProjectStream.StreamId,
                 Domain = currentProjectStream.Domain,
                 ProjectId = currentProjectStream.ProjectId,
-                ApiKey = currentProjectStream.ApiKey,
                 Version = currentProjectStream.Version++,
                 Data = serializedNewProjectData,
                 Event = eventName,
@@ -161,6 +188,7 @@ namespace Ranger.Services.Projects.Data
                 {
                     throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
                 }
+                throw;
             }
         }
     }

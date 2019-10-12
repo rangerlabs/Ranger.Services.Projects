@@ -10,10 +10,7 @@ namespace Ranger.Services.Projects.Data
         [Required]
         public Guid ProjectId { get; set; }
         [Required]
-        public Guid ApiKey { get; set; }
-        [Required]
         public string DatabaseUsername { get; set; }
-
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
