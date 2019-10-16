@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
@@ -26,8 +18,7 @@ namespace Ranger.Services.Projects.Data
 
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<ProjectStream<Project>> ProjectStreams { get; set; }
-
-
+        public DbSet<ProjectUniqueConstraint> ProjectUniqueConstraints { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -69,9 +60,7 @@ namespace Ranger.Services.Projects.Data
 
                 encryptionHelper?.SetEncrytedPropertyAccessMode(entity);
             }
-
-            modelBuilder.Entity<ProjectStream<Project>>().HasIndex(p => new { p.ProjectId, p.Version }).IsUnique(); //Index to ensure uniqueness on writes
-            modelBuilder.Entity<ProjectStream<Project>>().HasIndex(p => new { p.Domain, p.ProjectId }).IsUnique(); //Index for efficient read access
+            modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.Name }).IsUnique();
         }
     }
 }

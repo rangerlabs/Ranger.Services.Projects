@@ -23,15 +23,27 @@ namespace Ranger.Services.Projects.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "project_unique_constraints",
+                columns: table => new
+                {
+                    project_id = table.Column<Guid>(nullable: false),
+                    name = table.Column<string>(maxLength: 140, nullable: false),
+                    database_username = table.Column<string>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_project_unique_constraints", x => x.project_id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "project_streams",
                 columns: table => new
                 {
                     id = table.Column<int>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
-                    project_id = table.Column<Guid>(nullable: false),
                     database_username = table.Column<string>(nullable: false),
                     stream_id = table.Column<Guid>(nullable: false),
-                    domain = table.Column<string>(maxLength: 28, nullable: false),
+                    project_unique_constraint_project_id = table.Column<Guid>(nullable: false),
                     version = table.Column<int>(nullable: false),
                     data = table.Column<string>(type: "jsonb", nullable: false),
                     @event = table.Column<string>(name: "event", nullable: false),
@@ -41,18 +53,23 @@ namespace Ranger.Services.Projects.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_project_streams", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_project_streams_project_unique_constraints_project_unique_con~",
+                        column: x => x.project_unique_constraint_project_id,
+                        principalTable: "project_unique_constraints",
+                        principalColumn: "project_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_streams_domain_project_id",
+                name: "ix_project_streams_project_unique_constraint_project_id",
                 table: "project_streams",
-                columns: new[] { "domain", "project_id" },
-                unique: true);
+                column: "project_unique_constraint_project_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_streams_project_id_version",
-                table: "project_streams",
-                columns: new[] { "project_id", "version" },
+                name: "IX_project_unique_constraints_database_username_name",
+                table: "project_unique_constraints",
+                columns: new[] { "database_username", "name" },
                 unique: true);
         }
 
@@ -63,6 +80,9 @@ namespace Ranger.Services.Projects.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "project_streams");
+
+            migrationBuilder.DropTable(
+                name: "project_unique_constraints");
         }
     }
 }

@@ -1,10 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Ranger.Common;
 using Ranger.Common.Data.Exceptions;
 using Ranger.InternalHttpClient;
@@ -51,12 +51,30 @@ namespace Ranger.Services.Projects
             }
 
             var repo = projectsRepositoryFactory.Invoke(tenant);
-            return Ok(await repo.GetAllProjects());
+            IEnumerable<(Project project, int version)> projects = await repo.GetAllProjects();
+            var result = projects.Select((_) =>
+            new
+            {
+                ApiKey = _.project.ApiKey,
+                Description = _.project.Description,
+                Enabled = _.project.Enabled,
+                Name = _.project.Name,
+                ProjectId = _.project.ProjectId,
+                Version = _.version
+            });
+            return Ok(result);
         }
 
         [HttpPut("{domain}/project/{projectId}")]
         public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] string projectId, PutProjectModel projectModel)
         {
+            Guid projectIdGuid;
+            Guid apiKey;
+            if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid) || !Guid.TryParse(projectModel.ApiKey, out apiKey))
+            {
+                throw new ArgumentException("Invalid project id format.");
+            }
+
             ContextTenant tenant = null;
             try
             {
@@ -78,22 +96,25 @@ namespace Ranger.Services.Projects
             }
 
             var repo = projectsRepositoryFactory.Invoke(tenant);
-            var project = await repo.GetProjectByProjectIdAsync(domain, projectId);
+            var project = await repo.GetProjectByProjectIdAsync(projectId);
             if (project is null)
             {
-                return NotFound();
+                var errors = new ApiErrorContent();
+                errors.Errors.Add("The PUT method can only be used to update projects at this time.");
+                return NotFound(errors);
             }
             var updatedProject = new Project
             {
+                ProjectId = projectIdGuid,
                 Name = projectModel.Name,
                 Description = projectModel.Description,
+                ApiKey = apiKey,
                 Enabled = projectModel.Enabled,
-                Version = projectModel.Version
             };
 
             try
             {
-                await repo.UpdateProjectAsync(domain, User.UserFromClaims().Email, "ProjectUpdated", updatedProject);
+                await repo.UpdateProjectAsync(domain, projectModel.UserEmail, "ProjectUpdated", projectModel.Version, updatedProject);
             }
             catch (ConcurrencyException ex)
             {
@@ -107,7 +128,7 @@ namespace Ranger.Services.Projects
                 logger.LogInformation(ex.Message);
                 return StatusCode(StatusCodes.Status304NotModified);
             }
-            return Ok(new ProjectResponseModel(domain, project.ProjectId, project.Name, project.Description, project.ApiKey.ToString(), project.Enabled));
+            return Ok(new ProjectResponseModel(project.ProjectId.ToString(), project.Name, project.Description, project.ApiKey.ToString(), project.Enabled, projectModel.Version));
         }
 
         [HttpPost("{domain}/project")]
@@ -139,7 +160,6 @@ namespace Ranger.Services.Projects
         {
             var project = new Project
             {
-                Version = 0,
                 ProjectId = Guid.NewGuid(),
                 Name = projectModel.Name,
                 ApiKey = Guid.NewGuid(),
@@ -148,7 +168,7 @@ namespace Ranger.Services.Projects
             };
             try
             {
-                await repo.AddProjectAsync(domain, User.UserFromClaims().Email, "ProjectCreated", project);
+                await repo.AddProjectAsync(domain, projectModel.UserEmail, "ProjectCreated", project);
             }
             catch (EventStreamDataConstraintException ex)
             {
@@ -163,7 +183,7 @@ namespace Ranger.Services.Projects
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            return Ok(new ProjectResponseModel(domain, project.ProjectId, project.Name, project.Description, project.ApiKey.ToString(), project.Enabled));
+            return Ok(new ProjectResponseModel(project.ProjectId.ToString(), project.Name, project.Description, project.ApiKey.ToString(), project.Enabled, 0));
         }
     }
 }

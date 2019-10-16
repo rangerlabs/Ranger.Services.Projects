@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Npgsql;
 using Ranger.Common;
 using Ranger.Common.Data.Exceptions;
@@ -12,6 +13,7 @@ using Ranger.Common.Data.Exceptions;
 namespace Ranger.Services.Projects.Data
 {
 
+    //TODO: after updating to .net 3.0, use the new System.Text.Json api to query
     public class ProjectsRepository : BaseRepository<ProjectsRepository>, IProjectsRepository
     {
         private readonly ContextTenant contextTenant;
@@ -30,102 +32,54 @@ namespace Ranger.Services.Projects.Data
         public async Task AddProjectAsync(string domain, string userEmail, string eventName, Project project)
         {
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
+
+            var projectUniqueConstraint = await this.AddProjectUniqueConstraints(project);
             var newProjectStream = new ProjectStream<Project>()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
+                ProjectUniqueConstraint = projectUniqueConstraint,
                 StreamId = Guid.NewGuid(),
-                Domain = domain,
-                ProjectId = project.ProjectId,
-                Version = project.Version,
+                Version = 0,
                 Data = serializedNewProjectData,
                 Event = eventName,
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
             };
             Context.ProjectStreams.Add(newProjectStream);
-            try
-            {
-                await Context.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex)
-            {
-                var postgresException = ex.InnerException as PostgresException;
-                if (postgresException.SqlState == "23505")
-                {
-                    var uniqueIndexViolation = postgresException.ConstraintName;
-                    switch (uniqueIndexViolation)
-                    {
-                        case ProjectJsonbConstraintNames.Name:
-                            {
-                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
-                            }
-                        case ProjectJsonbConstraintNames.ProjectId:
-                            {
-                                throw new EventStreamDataConstraintException("The project id is in use by another project.");
-                            }
-                        case ProjectJsonbConstraintNames.ApiKey:
-                            {
-                                throw new EventStreamDataConstraintException("The project API key is in use by another project.");
-                            }
-                    }
-                }
-                throw;
-            }
+            await Context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<Project>> GetAllProjects()
+        public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
         {
             var projectStreams = await Context.ProjectStreams.GroupBy(ps => ps.StreamId).Select(group => group.OrderByDescending(ps => ps.Version).First()).ToListAsync();
-            List<Project> projects = new List<Project>();
+            List<(Project project, int version)> projects = new List<(Project project, int version)>();
             foreach (var projectStream in projectStreams)
             {
-                projects.Add(JsonConvert.DeserializeObject<Project>(projectStream.Data));
+                projects.Add((JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version));
             }
             return projects;
         }
 
-        public async Task<Project> GetProjectByProjectIdAsync(string domain, string projectId)
+        public async Task<Project> GetProjectByProjectIdAsync(string projectId)
         {
-            Guid parsedProjectId = ParseGuid(projectId);
-            var projectStream = await Context.ProjectStreams.Where(p => p.Domain == domain && p.ProjectId == parsedProjectId).OrderByDescending(ps => ps.Version).FirstOrDefaultAsync();
+            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ProjectId' = {projectId} ORDER BY Version DESC").FirstOrDefaultAsync();
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
         public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
         {
-            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data -> 'ApiKey' = {apiKey} ORDER BY Version DESC").SingleAsync();
+            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ApiKey' = {apiKey} ORDER BY Version DESC", apiKey).SingleAsync();
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
-        private Guid ParseGuid(string apiKey)
+        public async Task RemoveProjectAsync(string name)
         {
-            Guid parsedApiKey;
-            try
-            {
-                parsedApiKey = Guid.Parse(apiKey);
-            }
-            catch (Exception)
-            {
-                logger.LogError($"Failed to parse api key '{apiKey}' to a GUID.");
-                throw;
-            }
-
-            return parsedApiKey;
+            Context.ProjectStreams.RemoveRange(
+                await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'Name' = {name} ORDER BY Version DESC").ToListAsync()
+            );
         }
 
-        public async Task RemoveProjectAsync(string domain, string projectId)
-        {
-            Guid parsedProjectId = ParseGuid(projectId);
-            Context.RemoveRange(Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == parsedProjectId));
-            await Context.SaveChangesAsync();
-        }
-
-        private async Task<ProjectStream<Project>> GetProjectStreamByProjectIdAsync(string domain, Guid projectId)
-        {
-            return await Context.ProjectStreams.Where(ps => ps.Domain == domain && ps.ProjectId == projectId).FirstOrDefaultAsync();
-        }
-
-        public async Task UpdateProjectAsync(string domain, string userEmail, string eventName, Project project)
+        public async Task UpdateProjectAsync(string domain, string userEmail, string eventName, int version, Project project)
         {
             if (string.IsNullOrWhiteSpace(domain))
             {
@@ -147,36 +101,37 @@ namespace Ranger.Services.Projects.Data
                 throw new ArgumentNullException(nameof(project));
             }
 
-            var currentProjectStream = await GetProjectStreamByProjectIdAsync(domain, project.ProjectId);
-            if (project.Version - currentProjectStream.Version > 1)
-            {
-                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
-            }
-            if (project.Version - currentProjectStream.Version <= 0)
-            {
-                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
-            }
+            //TODO: This is a redundant call because we're retrieving the Project in the controller
+            var currentProjectStream = await GetProjectStreamByProjectIdAsync(project.ProjectId.ToString());
+            ValidateRequestVersionIncremented(version, currentProjectStream);
 
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
-            if (serializedNewProjectData == currentProjectStream.Data)
+            ValidateDataJsonInequality(currentProjectStream, serializedNewProjectData);
+
+            var outdatedProjectStream = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
+
+            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.ProjectId);
+            if (project.Name != outdatedProjectStream.Name)
             {
-                throw new NoOpException("No changes were made from the previous version.");
+                uniqueConstraint.Name = project.Name;
+                Context.Update(uniqueConstraint);
             }
 
-            var projectStreamUpdate = new ProjectStream<Project>()
+            var updatedProjectStream = new ProjectStream<Project>()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
+                ProjectUniqueConstraint = uniqueConstraint,
                 StreamId = currentProjectStream.StreamId,
-                Domain = currentProjectStream.Domain,
-                ProjectId = currentProjectStream.ProjectId,
-                Version = currentProjectStream.Version++,
+                Version = version,
                 Data = serializedNewProjectData,
                 Event = eventName,
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
             };
 
-            Context.ProjectStreams.Add(projectStreamUpdate);
+
+
+            Context.ProjectStreams.Add(updatedProjectStream);
             try
             {
                 await Context.SaveChangesAsync();
@@ -186,10 +141,80 @@ namespace Ranger.Services.Projects.Data
                 var postgresException = ex.InnerException as PostgresException;
                 if (postgresException.SqlState == "23505")
                 {
-                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{project.Version}'.");
+                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
                 }
                 throw;
             }
+        }
+
+        private Guid ParseGuid(string apiKey)
+        {
+            Guid parsedApiKey;
+            try
+            {
+                parsedApiKey = Guid.Parse(apiKey);
+            }
+            catch (Exception)
+            {
+                logger.LogError($"Failed to parse api key '{apiKey}' to a GUID.");
+                throw;
+            }
+
+            return parsedApiKey;
+        }
+
+        private async Task<ProjectStream<Project>> GetProjectStreamByProjectNameAsync(string name)
+        {
+            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'Name' = {name} ORDER BY Version DESC").FirstOrDefaultAsync();
+        }
+
+        private static void ValidateDataJsonInequality(ProjectStream<Project> currentProjectStream, string serializedNewProjectData)
+        {
+            if (JToken.DeepEquals(serializedNewProjectData, currentProjectStream.Data))
+            {
+                throw new NoOpException("No changes were made from the previous version.");
+            }
+        }
+
+        private static void ValidateRequestVersionIncremented(int version, ProjectStream<Project> currentProjectStream)
+        {
+            if (version - currentProjectStream.Version > 1)
+            {
+                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+            }
+            if (version - currentProjectStream.Version <= 0)
+            {
+                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+            }
+        }
+
+        private async Task<ProjectStream<Project>> GetProjectStreamByProjectIdAsync(string projectId)
+        {
+            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ProjectId' = {projectId} ORDER BY Version DESC").FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> GetProjectNameAvailableByDomainAsync(string domain, string name)
+        {
+            return await Context.ProjectUniqueConstraints.AnyAsync(_ => _.Name == name);
+        }
+
+        private async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId)
+        {
+            return await Context.ProjectUniqueConstraints.SingleOrDefaultAsync(_ => _.ProjectId == projectId);
+        }
+
+        private async Task<ProjectUniqueConstraint> AddProjectUniqueConstraints(Project project)
+        {
+            var newProjectUniqueConstraint = new ProjectUniqueConstraint
+            {
+                ProjectId = project.ProjectId,
+                DatabaseUsername = contextTenant.DatabaseUsername,
+                Name = project.Name,
+            };
+            Context.ProjectUniqueConstraints.Add(newProjectUniqueConstraint);
+
+            await Context.SaveChangesAsync();
+            return newProjectUniqueConstraint;
         }
     }
 }

@@ -5,19 +5,17 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectStream<TDataType> : IRowLevelSecurityDbSet, IEventStreamDbSet<TDataType>
+    public class ProjectStream<TDataType> : IEventStreamDbSet<TDataType>
     {
-        [Required]
-        public Guid ProjectId { get; set; }
         [Required]
         public string DatabaseUsername { get; set; }
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
+        [Required]
         public Guid StreamId { get; set; }
         [Required]
-        [StringLength(28)]
-        public string Domain { get; set; }
+        public ProjectUniqueConstraint ProjectUniqueConstraint { get; set; }
         [Required]
         public int Version { get; set; }
         [Required]

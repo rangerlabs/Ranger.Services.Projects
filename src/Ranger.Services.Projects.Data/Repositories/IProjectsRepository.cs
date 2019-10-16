@@ -3,13 +3,14 @@ using System.Threading.Tasks;
 
 namespace Ranger.Services.Projects.Data
 {
-    public interface IProjectsRepository : IRepository
+    internal interface IProjectsRepository : IRepository
     {
         Task AddProjectAsync(string domain, string userEmail, string eventName, Project project);
-        Task<IEnumerable<Project>> GetAllProjects();
+        Task<IEnumerable<(Project project, int version)>> GetAllProjects();
+        Task<Project> GetProjectByProjectIdAsync(string projectId);
         Task<Project> GetProjectByApiKeyAsync(string apiKey);
-        Task<Project> GetProjectByProjectIdAsync(string domain, string projectId);
-        Task RemoveProjectAsync(string domain, string projectId);
-        Task UpdateProjectAsync(string domain, string userEmail, string eventName, Project project);
+        Task RemoveProjectAsync(string name);
+        Task UpdateProjectAsync(string domain, string userEmail, string eventName, int version, Project project);
+        Task<bool> GetProjectNameAvailableByDomainAsync(string domain, string name);
     }
 }

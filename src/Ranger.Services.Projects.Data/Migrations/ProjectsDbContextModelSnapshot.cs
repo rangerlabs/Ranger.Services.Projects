@@ -52,11 +52,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsRequired()
                         .HasColumnName("database_username");
 
-                    b.Property<string>("Domain")
-                        .IsRequired()
-                        .HasColumnName("domain")
-                        .HasMaxLength(28);
-
                     b.Property<string>("Event")
                         .IsRequired()
                         .HasColumnName("event");
@@ -68,8 +63,8 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsRequired()
                         .HasColumnName("inserted_by");
 
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnName("project_id");
+                    b.Property<Guid>("ProjectUniqueConstraintProjectId")
+                        .HasColumnName("project_unique_constraint_project_id");
 
                     b.Property<Guid>("StreamId")
                         .HasColumnName("stream_id");
@@ -80,13 +75,42 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_project_streams");
 
-                    b.HasIndex("Domain", "ProjectId")
-                        .IsUnique();
-
-                    b.HasIndex("ProjectId", "Version")
-                        .IsUnique();
+                    b.HasIndex("ProjectUniqueConstraintProjectId")
+                        .HasName("ix_project_streams_project_unique_constraint_project_id");
 
                     b.ToTable("project_streams");
+                });
+
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectUniqueConstraint", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("DatabaseUsername")
+                        .IsRequired()
+                        .HasColumnName("database_username");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnName("name")
+                        .HasMaxLength(140);
+
+                    b.HasKey("ProjectId")
+                        .HasName("pk_project_unique_constraints");
+
+                    b.HasIndex("DatabaseUsername", "Name")
+                        .IsUnique();
+
+                    b.ToTable("project_unique_constraints");
+                });
+
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
+                {
+                    b.HasOne("Ranger.Services.Projects.Data.ProjectUniqueConstraint", "ProjectUniqueConstraint")
+                        .WithMany()
+                        .HasForeignKey("ProjectUniqueConstraintProjectId")
+                        .HasConstraintName("fk_project_streams_project_unique_constraints_project_unique_con~")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }

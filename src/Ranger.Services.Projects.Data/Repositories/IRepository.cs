@@ -1,4 +1,4 @@
-namespace Ranger.Services.Projects
+namespace Ranger.Services.Projects.Data
 {
     //Marker interface
     public interface IRepository { }
