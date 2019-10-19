@@ -46,7 +46,30 @@ namespace Ranger.Services.Projects.Data
                 InsertedBy = userEmail,
             };
             Context.ProjectStreams.Add(newProjectStream);
-            await Context.SaveChangesAsync();
+            try
+            {
+                await Context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                var postgresException = ex.InnerException as PostgresException;
+                if (postgresException.SqlState == "23505")
+                {
+                    var uniqueIndexViolation = postgresException.ConstraintName;
+                    switch (uniqueIndexViolation)
+                    {
+                        case ProjectJsonbConstraintNames.Name:
+                            {
+                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                            }
+                        default:
+                            {
+                                throw new EventStreamDataConstraintException("");
+                            }
+                    }
+                }
+                throw;
+            }
         }
 
         public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
@@ -141,9 +164,24 @@ namespace Ranger.Services.Projects.Data
                 var postgresException = ex.InnerException as PostgresException;
                 if (postgresException.SqlState == "23505")
                 {
-                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                    var uniqueIndexViolation = postgresException.ConstraintName;
+                    switch (uniqueIndexViolation)
+                    {
+                        case ProjectJsonbConstraintNames.Name:
+                            {
+                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                            }
+                        case ProjectJsonbConstraintNames.ProjectId_Version:
+                            {
+                                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                            }
+                        default:
+                            {
+                                throw new EventStreamDataConstraintException("");
+                            }
+                    }
+                    throw;
                 }
-                throw;
             }
         }
 
@@ -213,7 +251,6 @@ namespace Ranger.Services.Projects.Data
             };
             Context.ProjectUniqueConstraints.Add(newProjectUniqueConstraint);
 
-            await Context.SaveChangesAsync();
             return newProjectUniqueConstraint;
         }
     }

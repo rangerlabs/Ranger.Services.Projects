@@ -123,12 +123,24 @@ namespace Ranger.Services.Projects
                 errors.Errors.Add(ex.Message);
                 return Conflict(errors);
             }
+            catch (EventStreamDataConstraintException ex)
+            {
+                logger.LogError(ex, "Failed to save project stream because a constraint was violated.");
+                var errors = new ApiErrorContent();
+                errors.Errors.Add(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project." : ex.Message);
+                return Conflict(errors);
+            }
             catch (NoOpException ex)
             {
                 logger.LogInformation(ex.Message);
                 return StatusCode(StatusCodes.Status304NotModified);
             }
-            return Ok(new ProjectResponseModel(project.ProjectId.ToString(), project.Name, project.Description, project.ApiKey.ToString(), project.Enabled, projectModel.Version));
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to save project stream.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+            return Ok(new ProjectResponseModel(updatedProject.ProjectId.ToString(), updatedProject.Name, updatedProject.Description, updatedProject.ApiKey.ToString(), updatedProject.Enabled, projectModel.Version));
         }
 
         [HttpPost("{domain}/project")]
@@ -172,7 +184,7 @@ namespace Ranger.Services.Projects
             }
             catch (EventStreamDataConstraintException ex)
             {
-                logger.LogError(ex, "Failed to save project stream because a constraint was violated in the Data property.");
+                logger.LogError(ex, "Failed to save project stream because a constraint was violated.");
                 var errors = new ApiErrorContent();
                 errors.Errors.Add(ex.Message);
                 return Conflict(errors);
