@@ -29,6 +29,44 @@ namespace Ranger.Services.Projects
             this.logger = logger;
         }
 
+        [HttpGet("{domain}/project")]
+        public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery]string apiKey)
+        {
+            Guid parsedApiKey;
+            if (!Guid.TryParse(apiKey, out parsedApiKey))
+            {
+                return BadRequest("Unable to parse the Api Key");
+            }
+            ContextTenant tenant = null;
+            try
+            {
+                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+            }
+            catch (HttpClientException ex)
+            {
+                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            var repo = projectsRepositoryFactory.Invoke(tenant);
+            var project = await repo.GetProjectByApiKeyAsync(parsedApiKey);
+            if (project is null)
+            {
+                var apiErrorContent = new ApiErrorContent();
+                apiErrorContent.Errors.Add($"No project was found with API Key: '{apiKey}'.");
+                return NotFound(apiErrorContent);
+            }
+            var result = new { ProjectId = project.ProjectId, Enabled = project.Enabled, Name = project.Name };
+            return Ok(result);
+        }
+
         [HttpGet("{domain}/project/all")]
         public async Task<IActionResult> GetProjects([FromRoute]string domain)
         {
@@ -72,7 +110,7 @@ namespace Ranger.Services.Projects
             Guid apiKey;
             if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid) || !Guid.TryParse(projectModel.ApiKey, out apiKey))
             {
-                throw new ArgumentException("Invalid project id format.");
+                return BadRequest("Invalid project id format.");
             }
 
             ContextTenant tenant = null;

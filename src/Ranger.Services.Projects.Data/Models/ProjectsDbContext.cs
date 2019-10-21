@@ -61,6 +61,7 @@ namespace Ranger.Services.Projects.Data
                 encryptionHelper?.SetEncrytedPropertyAccessMode(entity);
             }
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.Name }).IsUnique();
+            modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.ApiKey }).IsUnique();
         }
     }
 }

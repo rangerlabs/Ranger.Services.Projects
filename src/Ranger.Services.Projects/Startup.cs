@@ -84,6 +84,7 @@ namespace Ranger.Services.Projects
             builder.Populate(services);
             builder.RegisterInstance<CloudSqlOptions>(configuration.GetOptions<CloudSqlOptions>("cloudSql"));
             builder.RegisterType<ProjectsDbContext>().InstancePerDependency();
+            builder.RegisterType<ProjectUniqueContraintRepository>().As<IProjectUniqueContraintRepository>();
             builder.RegisterAssemblyTypes(typeof(BaseRepository<>).Assembly).AsClosedTypesOf(typeof(BaseRepository<>)).InstancePerDependency();
             builder.AddRabbitMq(loggerFactory);
             container = builder.Build();

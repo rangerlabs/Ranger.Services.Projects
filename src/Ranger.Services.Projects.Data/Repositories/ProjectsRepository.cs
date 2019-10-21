@@ -13,16 +13,18 @@ using Ranger.Common.Data.Exceptions;
 namespace Ranger.Services.Projects.Data
 {
 
-    //TODO: after updating to .net 3.0, use the new System.Text.Json api to query
+    //TODO: after updating to .net 3.0, use the new System.Text.Json API to query
     public class ProjectsRepository : BaseRepository<ProjectsRepository>, IProjectsRepository
     {
         private readonly ContextTenant contextTenant;
         private readonly ProjectsDbContext.Factory context;
         private readonly CloudSqlOptions cloudSqlOptions;
         private readonly ILogger<BaseRepository<ProjectsRepository>> logger;
+        private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
 
-        public ProjectsRepository(ContextTenant contextTenant, ProjectsDbContext.Factory context, CloudSqlOptions cloudSqlOptions, ILogger<BaseRepository<ProjectsRepository>> logger) : base(contextTenant, context, cloudSqlOptions, logger)
+        public ProjectsRepository(ContextTenant contextTenant, ProjectsDbContext.Factory context, IProjectUniqueContraintRepository projectUniqueContraintRepository, CloudSqlOptions cloudSqlOptions, ILogger<BaseRepository<ProjectsRepository>> logger) : base(contextTenant, context, cloudSqlOptions, logger)
         {
+            this.projectUniqueContraintRepository = projectUniqueContraintRepository;
             this.contextTenant = contextTenant;
             this.context = context;
             this.cloudSqlOptions = cloudSqlOptions;
@@ -33,7 +35,7 @@ namespace Ranger.Services.Projects.Data
         {
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
 
-            var projectUniqueConstraint = await this.AddProjectUniqueConstraints(project);
+            var projectUniqueConstraint = this.AddProjectUniqueConstraints(project);
             var newProjectStream = new ProjectStream<Project>()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
@@ -89,9 +91,9 @@ namespace Ranger.Services.Projects.Data
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
-        public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
+        public async Task<Project> GetProjectByApiKeyAsync(Guid apiKey)
         {
-            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ApiKey' = {apiKey} ORDER BY Version DESC", apiKey).SingleAsync();
+            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ApiKey' = {apiKey.ToString()} ORDER BY Version DESC").SingleAsync();
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
@@ -151,8 +153,6 @@ namespace Ranger.Services.Projects.Data
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
             };
-
-
 
             Context.ProjectStreams.Add(updatedProjectStream);
             try
@@ -231,26 +231,21 @@ namespace Ranger.Services.Projects.Data
             return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ProjectId' = {projectId} ORDER BY Version DESC").FirstOrDefaultAsync();
         }
 
-        public async Task<bool> GetProjectNameAvailableByDomainAsync(string domain, string name)
-        {
-            return await Context.ProjectUniqueConstraints.AnyAsync(_ => _.Name == name);
-        }
-
-        private async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId)
+        public async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId)
         {
             return await Context.ProjectUniqueConstraints.SingleOrDefaultAsync(_ => _.ProjectId == projectId);
         }
 
-        private async Task<ProjectUniqueConstraint> AddProjectUniqueConstraints(Project project)
+        private ProjectUniqueConstraint AddProjectUniqueConstraints(Project project)
         {
             var newProjectUniqueConstraint = new ProjectUniqueConstraint
             {
                 ProjectId = project.ProjectId,
                 DatabaseUsername = contextTenant.DatabaseUsername,
                 Name = project.Name,
+                ApiKey = project.ApiKey
             };
             Context.ProjectUniqueConstraints.Add(newProjectUniqueConstraint);
-
             return newProjectUniqueConstraint;
         }
     }
