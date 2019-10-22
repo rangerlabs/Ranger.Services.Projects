@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Ranger.Services.Projects.Data;
@@ -9,9 +10,10 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    partial class ProjectsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20191016045541_AddRowLevelSecurity")]
+    partial class AddRowLevelSecurity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -86,9 +88,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnName("project_id");
 
-                    b.Property<Guid>("ApiKey")
-                        .HasColumnName("api_key");
-
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
                         .HasColumnName("database_username");
@@ -100,9 +99,6 @@ namespace Ranger.Services.Projects.Data.Migrations
 
                     b.HasKey("ProjectId")
                         .HasName("pk_project_unique_constraints");
-
-                    b.HasIndex("DatabaseUsername", "ApiKey")
-                        .IsUnique();
 
                     b.HasIndex("DatabaseUsername", "Name")
                         .IsUnique();
