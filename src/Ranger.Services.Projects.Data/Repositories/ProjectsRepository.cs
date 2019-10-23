@@ -208,7 +208,9 @@ namespace Ranger.Services.Projects.Data
 
         private static void ValidateDataJsonInequality(ProjectStream<Project> currentProjectStream, string serializedNewProjectData)
         {
-            if (JToken.DeepEquals(serializedNewProjectData, currentProjectStream.Data))
+            var currentJObject = JsonConvert.DeserializeObject<JObject>(currentProjectStream.Data);
+            var requestJObject = JsonConvert.DeserializeObject<JObject>(serializedNewProjectData);
+            if (JToken.DeepEquals(currentJObject, requestJObject))
             {
                 throw new NoOpException("No changes were made from the previous version.");
             }
