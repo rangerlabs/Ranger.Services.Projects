@@ -10,14 +10,16 @@ namespace Ranger.Services.Projects.Data.Migrations
             //https://dba.stackexchange.com/questions/161313/creating-a-unique-constraint-from-a-json-object
             migrationBuilder.Sql("CREATE INDEX idx_data_projectid_version ON project_streams (database_username, (data->>'ProjectId'), Version);");
             migrationBuilder.Sql("CREATE INDEX idx_data_name ON project_streams (database_username, (data->>'Name'));");
-            migrationBuilder.Sql("CREATE INDEX idx_data_apikey ON project_streams (database_username, (data->>'ApiKey'));");
+            migrationBuilder.Sql("CREATE INDEX idx_data_hashedliveapikey ON project_streams (database_username, (data->>'HashedLiveApiKey'));");
+            migrationBuilder.Sql("CREATE INDEX idx_data_hashedtestapikey ON project_streams (database_username, (data->>'HashedTestApiKey'));");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("CREATE INDEX idx_data_name");
             migrationBuilder.Sql("CREATE INDEX idx_data_projectid");
-            migrationBuilder.Sql("CREATE INDEX idx_data_apikey");
+            migrationBuilder.Sql("CREATE INDEX idx_data_hashedliveapikey");
+            migrationBuilder.Sql("CREATE INDEX idx_data_hashedtestapikey");
         }
     }
 }

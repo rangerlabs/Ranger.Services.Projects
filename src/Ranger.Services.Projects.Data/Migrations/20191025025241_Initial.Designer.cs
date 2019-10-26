@@ -10,7 +10,7 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191016045521_Initial")]
+    [Migration("20191025025241_Initial")]
     partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,7 +39,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.ToTable("data_protection_keys");
                 });
 
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -92,6 +92,14 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsRequired()
                         .HasColumnName("database_username");
 
+                    b.Property<string>("HashedLiveApiKey")
+                        .IsRequired()
+                        .HasColumnName("hashed_live_api_key");
+
+                    b.Property<string>("HashedTestApiKey")
+                        .IsRequired()
+                        .HasColumnName("hashed_test_api_key");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnName("name")
@@ -100,13 +108,19 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasKey("ProjectId")
                         .HasName("pk_project_unique_constraints");
 
+                    b.HasIndex("DatabaseUsername", "HashedLiveApiKey")
+                        .IsUnique();
+
+                    b.HasIndex("DatabaseUsername", "HashedTestApiKey")
+                        .IsUnique();
+
                     b.HasIndex("DatabaseUsername", "Name")
                         .IsUnique();
 
                     b.ToTable("project_unique_constraints");
                 });
 
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
                 {
                     b.HasOne("Ranger.Services.Projects.Data.ProjectUniqueConstraint", "ProjectUniqueConstraint")
                         .WithMany()

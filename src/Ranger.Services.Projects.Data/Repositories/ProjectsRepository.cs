@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -36,7 +38,7 @@ namespace Ranger.Services.Projects.Data
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
 
             var projectUniqueConstraint = this.AddProjectUniqueConstraints(project);
-            var newProjectStream = new ProjectStream<Project>()
+            var newProjectStream = new ProjectStream()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
                 ProjectUniqueConstraint = projectUniqueConstraint,
@@ -91,10 +93,20 @@ namespace Ranger.Services.Projects.Data
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
-        public async Task<Project> GetProjectByApiKeyAsync(Guid apiKey)
+        public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
         {
-            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ApiKey' = {apiKey.ToString()} ORDER BY Version DESC").SingleAsync();
-            return JsonConvert.DeserializeObject<Project>(projectStream.Data);
+            var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
+
+            ProjectStream projectStream = null;
+            if (apiKey.StartsWith("live."))
+            {
+                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'HashedLiveApiKey' = {hashedApiKey} ORDER BY Version DESC").SingleAsync();
+            }
+            if (apiKey.StartsWith("test."))
+            {
+                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'HashedTestApiKey' = {hashedApiKey} ORDER BY Version DESC").SingleAsync();
+            }
+            return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
 
         public async Task RemoveProjectAsync(string name)
@@ -142,7 +154,7 @@ namespace Ranger.Services.Projects.Data
                 Context.Update(uniqueConstraint);
             }
 
-            var updatedProjectStream = new ProjectStream<Project>()
+            var updatedProjectStream = new ProjectStream()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
                 ProjectUniqueConstraint = uniqueConstraint,
@@ -185,28 +197,12 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        private Guid ParseGuid(string apiKey)
-        {
-            Guid parsedApiKey;
-            try
-            {
-                parsedApiKey = Guid.Parse(apiKey);
-            }
-            catch (Exception)
-            {
-                logger.LogError($"Failed to parse api key '{apiKey}' to a GUID.");
-                throw;
-            }
-
-            return parsedApiKey;
-        }
-
-        private async Task<ProjectStream<Project>> GetProjectStreamByProjectNameAsync(string name)
+        private async Task<ProjectStream> GetProjectStreamByProjectNameAsync(string name)
         {
             return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'Name' = {name} ORDER BY Version DESC").FirstOrDefaultAsync();
         }
 
-        private static void ValidateDataJsonInequality(ProjectStream<Project> currentProjectStream, string serializedNewProjectData)
+        private static void ValidateDataJsonInequality(ProjectStream currentProjectStream, string serializedNewProjectData)
         {
             var currentJObject = JsonConvert.DeserializeObject<JObject>(currentProjectStream.Data);
             var requestJObject = JsonConvert.DeserializeObject<JObject>(serializedNewProjectData);
@@ -216,7 +212,7 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        private static void ValidateRequestVersionIncremented(int version, ProjectStream<Project> currentProjectStream)
+        private static void ValidateRequestVersionIncremented(int version, ProjectStream currentProjectStream)
         {
             if (version - currentProjectStream.Version > 1)
             {
@@ -228,7 +224,7 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        private async Task<ProjectStream<Project>> GetProjectStreamByProjectIdAsync(string projectId)
+        private async Task<ProjectStream> GetProjectStreamByProjectIdAsync(string projectId)
         {
             return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE database_username = {contextTenant.DatabaseUsername} AND data ->> 'ProjectId' = {projectId} ORDER BY Version DESC").FirstOrDefaultAsync();
         }
@@ -245,7 +241,8 @@ namespace Ranger.Services.Projects.Data
                 ProjectId = project.ProjectId,
                 DatabaseUsername = contextTenant.DatabaseUsername,
                 Name = project.Name,
-                ApiKey = project.ApiKey
+                HashedLiveApiKey = project.HashedLiveApiKey,
+                HashedTestApiKey = project.HashedTestApiKey
             };
             Context.ProjectUniqueConstraints.Add(newProjectUniqueConstraint);
             return newProjectUniqueConstraint;

@@ -6,7 +6,10 @@ namespace Ranger.Services.Projects.Data
     {
         Guid ProjectId { get; set; }
         string Name { get; set; }
-        Guid ApiKey { get; set; }
+        string HashedLiveApiKey { get; set; }
+        string HashedTestApiKey { get; set; }
+        string LiveApiKeyPrefix { get; set; }
+        string TestApiKeyPrefix { get; set; }
         bool Enabled { get; set; }
         string Description { get; set; }
     }

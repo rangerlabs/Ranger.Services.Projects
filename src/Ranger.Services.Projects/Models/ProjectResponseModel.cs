@@ -6,21 +6,15 @@ namespace Ranger.Services.Projects
     public class ProjectResponseModel : IEvent
     {
 
-        public ProjectResponseModel(string projectId, string name, string description, string apiKey, bool enabled, int version)
-        {
-            this.ProjectId = projectId;
-            this.Name = name;
-            this.Description = description;
-            this.ApiKey = apiKey;
-            this.Enabled = enabled;
-            this.Version = version;
-
-        }
-        public string ProjectId { get; }
-        public string Name { get; }
-        public string Description { get; }
-        public string ApiKey { get; }
-        public bool Enabled { get; }
-        public int Version { get; }
+        public ProjectResponseModel() { }
+        public string ProjectId { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string LiveApiKey { get; set; }
+        public string TestApiKey { get; set; }
+        public string LiveApiKeyPrefix { get; set; }
+        public string TestApiKeyPrefix { get; set; }
+        public bool Enabled { get; set; }
+        public int Version { get; set; }
     }
 }

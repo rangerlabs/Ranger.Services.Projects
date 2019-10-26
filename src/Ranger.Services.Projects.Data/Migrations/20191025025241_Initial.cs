@@ -27,6 +27,8 @@ namespace Ranger.Services.Projects.Data.Migrations
                 columns: table => new
                 {
                     project_id = table.Column<Guid>(nullable: false),
+                    hashed_live_api_key = table.Column<string>(nullable: false),
+                    hashed_test_api_key = table.Column<string>(nullable: false),
                     name = table.Column<string>(maxLength: 140, nullable: false),
                     database_username = table.Column<string>(nullable: false)
                 },
@@ -65,6 +67,18 @@ namespace Ranger.Services.Projects.Data.Migrations
                 name: "ix_project_streams_project_unique_constraint_project_id",
                 table: "project_streams",
                 column: "project_unique_constraint_project_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_project_unique_constraints_database_username_hashed_live_ap~",
+                table: "project_unique_constraints",
+                columns: new[] { "database_username", "hashed_live_api_key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_project_unique_constraints_database_username_hashed_test_ap~",
+                table: "project_unique_constraints",
+                columns: new[] { "database_username", "hashed_test_api_key" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_project_unique_constraints_database_username_name",

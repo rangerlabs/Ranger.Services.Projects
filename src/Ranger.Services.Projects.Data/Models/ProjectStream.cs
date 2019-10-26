@@ -5,7 +5,7 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectStream<TDataType> : IEventStreamDbSet<TDataType>
+    public class ProjectStream : IEventStreamDbSet
     {
         [Required]
         public string DatabaseUsername { get; set; }

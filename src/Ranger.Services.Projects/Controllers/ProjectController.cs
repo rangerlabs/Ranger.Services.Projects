@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,11 +34,6 @@ namespace Ranger.Services.Projects
         [HttpGet("{domain}/project")]
         public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery]string apiKey)
         {
-            Guid parsedApiKey;
-            if (!Guid.TryParse(apiKey, out parsedApiKey))
-            {
-                return BadRequest("Unable to parse the Api Key");
-            }
             ContextTenant tenant = null;
             try
             {
@@ -56,11 +53,11 @@ namespace Ranger.Services.Projects
             }
 
             var repo = projectsRepositoryFactory.Invoke(tenant);
-            var project = await repo.GetProjectByApiKeyAsync(parsedApiKey);
+            var project = await repo.GetProjectByApiKeyAsync(apiKey);
             if (project is null)
             {
                 var apiErrorContent = new ApiErrorContent();
-                apiErrorContent.Errors.Add($"No project was found with API Key: '{apiKey}'.");
+                apiErrorContent.Errors.Add($"No project was found for the provided API Key.");
                 return NotFound(apiErrorContent);
             }
             var result = new { ProjectId = project.ProjectId, Enabled = project.Enabled, Name = project.Name };
@@ -93,11 +90,12 @@ namespace Ranger.Services.Projects
             var result = projects.Select((_) =>
             new
             {
-                ApiKey = _.project.ApiKey,
                 Description = _.project.Description,
                 Enabled = _.project.Enabled,
                 Name = _.project.Name,
                 ProjectId = _.project.ProjectId,
+                LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
+                TestApiKeyPrefix = _.project.TestApiKeyPrefix,
                 Version = _.version
             });
             return Ok(result);
@@ -107,8 +105,7 @@ namespace Ranger.Services.Projects
         public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] string projectId, PutProjectModel projectModel)
         {
             Guid projectIdGuid;
-            Guid apiKey;
-            if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid) || !Guid.TryParse(projectModel.ApiKey, out apiKey))
+            if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid))
             {
                 return BadRequest("Invalid project id format.");
             }
@@ -146,7 +143,6 @@ namespace Ranger.Services.Projects
                 ProjectId = projectIdGuid,
                 Name = projectModel.Name,
                 Description = projectModel.Description,
-                ApiKey = apiKey,
                 Enabled = projectModel.Enabled,
             };
 
@@ -178,7 +174,14 @@ namespace Ranger.Services.Projects
                 logger.LogError(ex, "Failed to save project stream.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-            return Ok(new ProjectResponseModel(updatedProject.ProjectId.ToString(), updatedProject.Name, updatedProject.Description, updatedProject.ApiKey.ToString(), updatedProject.Enabled, projectModel.Version));
+            return Ok(new ProjectResponseModel
+            {
+                ProjectId = updatedProject.ProjectId.ToString(),
+                Name = updatedProject.Name,
+                Description = updatedProject.Description,
+                Enabled = updatedProject.Enabled,
+                Version = projectModel.Version
+            });
         }
 
         [HttpPost("{domain}/project")]
@@ -208,11 +211,65 @@ namespace Ranger.Services.Projects
 
         private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, ProjectsRepository repo)
         {
+            string liveApiKeyGuid;
+            string testApiKeyGuid;
+            string liveApiKeyPrefix;
+            string testApiKeyPrefix;
+
+            var adequatelyDifferentPrefixes = false;
+            do
+            {
+                liveApiKeyGuid = Guid.NewGuid().ToString();
+                testApiKeyGuid = Guid.NewGuid().ToString();
+                liveApiKeyPrefix = liveApiKeyGuid.Substring(0, 6);
+                testApiKeyPrefix = testApiKeyGuid.Substring(0, 6);
+                liveApiKeyGuid = "live." + liveApiKeyGuid;
+                testApiKeyGuid = "test." + testApiKeyGuid;
+                var liveApiKeyPrefixDistinct = liveApiKeyPrefix.Distinct();
+                var testApiKeyPrefixDistinct = testApiKeyPrefix.Distinct();
+
+                IEnumerable<char> shorterDistinctPrefix;
+                string longerPrefix;
+                if (liveApiKeyPrefixDistinct.Count() <= testApiKeyPrefixDistinct.Count())
+                {
+                    shorterDistinctPrefix = liveApiKeyPrefixDistinct;
+                    longerPrefix = testApiKeyPrefix;
+                }
+                else
+                {
+                    shorterDistinctPrefix = testApiKeyPrefixDistinct;
+                    longerPrefix = liveApiKeyPrefix;
+                }
+
+                int charDiffCount = 0;
+                foreach (var character in shorterDistinctPrefix)
+                {
+                    if (longerPrefix.Count(testChar => testChar != character) == longerPrefix.Count())
+                    {
+                        charDiffCount++;
+                        if (charDiffCount >= 2)
+                        {
+                            break;
+                        }
+                    }
+
+                }
+                adequatelyDifferentPrefixes = charDiffCount == 2;
+            }
+            while (!adequatelyDifferentPrefixes);
+
+
+            var hashedLiveApiKey = Crypto.GenerateSHA512Hash(liveApiKeyGuid);
+            var hashedTestApiKey = Crypto.GenerateSHA512Hash(testApiKeyGuid);
+
             var project = new Project
             {
                 ProjectId = Guid.NewGuid(),
                 Name = projectModel.Name,
-                ApiKey = Guid.NewGuid(),
+                HashedLiveApiKey = hashedLiveApiKey,
+                HashedTestApiKey = hashedTestApiKey,
+                LiveApiKeyPrefix = "live." + liveApiKeyPrefix,
+                TestApiKeyPrefix = "test." + testApiKeyPrefix,
                 Enabled = projectModel.Enabled,
                 Description = projectModel.Description,
             };
@@ -233,7 +290,18 @@ namespace Ranger.Services.Projects
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            return Ok(new ProjectResponseModel(project.ProjectId.ToString(), project.Name, project.Description, project.ApiKey.ToString(), project.Enabled, 0));
+            return Ok(new ProjectResponseModel
+            {
+                ProjectId = project.ProjectId.ToString(),
+                Name = project.Name,
+                Description = project.Description,
+                LiveApiKey = liveApiKeyGuid,
+                TestApiKey = testApiKeyGuid,
+                LiveApiKeyPrefix = project.LiveApiKeyPrefix,
+                TestApiKeyPrefix = project.TestApiKeyPrefix,
+                Enabled = project.Enabled,
+                Version = 0
+            });
         }
     }
 }

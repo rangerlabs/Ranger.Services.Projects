@@ -7,13 +7,14 @@ namespace Ranger.Services.Projects
     public class ProjectCreated : IEvent
     {
 
-        public ProjectCreated(string domain, Guid projectId, string name, string description, string apiKey, bool enabled)
+        public ProjectCreated(string domain, Guid projectId, string name, string description, string liveApiKeyPrefix, string testApiKeyPrefix, bool enabled)
         {
             this.Domain = domain;
             this.ProjectId = projectId;
             this.Name = name;
             this.Description = description;
-            this.ApiKey = apiKey;
+            this.LiveApiKeyPrefix = liveApiKeyPrefix;
+            this.TestApiKeyPrefix = testApiKeyPrefix;
             this.Enabled = enabled;
 
         }
@@ -21,7 +22,8 @@ namespace Ranger.Services.Projects
         public Guid ProjectId { get; }
         public string Name { get; }
         public string Description { get; }
-        public string ApiKey { get; }
+        public string LiveApiKeyPrefix { get; }
+        public string TestApiKeyPrefix { get; }
         public bool Enabled { get; }
     }
 }

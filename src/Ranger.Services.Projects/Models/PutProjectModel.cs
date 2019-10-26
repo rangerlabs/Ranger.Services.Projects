@@ -14,7 +14,5 @@ namespace Ranger.Services.Projects
         [Required]
         public string UserEmail { get; set; }
         public string Description { get; set; }
-        [Required]
-        public string ApiKey { get; set; }
     }
 }
