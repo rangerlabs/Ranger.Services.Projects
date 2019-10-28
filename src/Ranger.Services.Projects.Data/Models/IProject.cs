@@ -12,5 +12,6 @@ namespace Ranger.Services.Projects.Data
         string TestApiKeyPrefix { get; set; }
         bool Enabled { get; set; }
         string Description { get; set; }
+        bool Deleted { get; set; }
     }
 }

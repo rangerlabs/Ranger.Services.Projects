@@ -46,7 +46,6 @@ namespace Ranger.Services.Projects
                 .AddJsonOptions(options =>
                 {
                     options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-                    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
 
             services.AddEntityFrameworkNpgsql().AddDbContext<ProjectsDbContext>((serviceProvider, options) =>
