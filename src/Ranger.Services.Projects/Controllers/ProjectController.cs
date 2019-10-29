@@ -264,7 +264,7 @@ namespace Ranger.Services.Projects
         }
 
         [HttpDelete("{domain}/project/{projectId}")]
-        public async Task<IActionResult> SoftDeleteProject([FromRoute]string domain, [FromRoute]string projectId, [FromBody]PutProjectModel projectModel)
+        public async Task<IActionResult> SoftDeleteProject([FromRoute]string domain, [FromRoute]string projectId, [FromBody]SoftDeleteModel softDeleteModel)
         {
             ContextTenant tenant = null;
             try
@@ -287,7 +287,7 @@ namespace Ranger.Services.Projects
             var repo = projectsRepositoryFactory.Invoke(tenant);
             try
             {
-                await repo.SoftDeleteAsync(projectModel.UserEmail, projectId);
+                await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
                 return NoContent();
             }
             catch (Exception ex)

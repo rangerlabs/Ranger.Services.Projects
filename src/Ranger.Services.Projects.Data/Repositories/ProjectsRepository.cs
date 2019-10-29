@@ -252,7 +252,7 @@ namespace Ranger.Services.Projects.Data
                     InsertedAt = DateTime.UtcNow,
                     InsertedBy = userEmail,
                 };
-                Context.ProjectUniqueConstraints.Remove(await Context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
+                // Context.ProjectUniqueConstraints.Remove(await Context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
                 Context.ProjectStreams.Add(updatedProjectStream);
                 try
                 {
