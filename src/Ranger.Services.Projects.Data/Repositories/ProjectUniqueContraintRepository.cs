@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Ranger.Common;
@@ -14,10 +16,21 @@ namespace Ranger.Services.Projects.Data
             this.context = context;
         }
 
-        public async Task<string> GetDatabaseUsernameByApiKeyAsync(Guid apiKey)
+        public async Task<string> GetDatabaseUsernameByApiKeyAsync(string apiKey)
         {
-            var databaseUserName = await context.ProjectUniqueConstraints.Where(_ => _.ApiKey == apiKey).Select(_ => _.DatabaseUsername).SingleOrDefaultAsync();
-            return databaseUserName;
+            var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
+            if (apiKey.StartsWith("live."))
+            {
+                return await context.ProjectUniqueConstraints.Where(_ => _.HashedLiveApiKey == hashedApiKey).Select(_ => _.DatabaseUsername).SingleOrDefaultAsync();
+            }
+            else if (apiKey.StartsWith("test."))
+            {
+                return await context.ProjectUniqueConstraints.Where(_ => _.HashedTestApiKey == hashedApiKey).Select(_ => _.DatabaseUsername).SingleOrDefaultAsync();
+            }
+            else
+            {
+                return null;
+            }
         }
 
         public async Task<bool> GetProjectNameAvailableByDomainAsync(string domain, string name)

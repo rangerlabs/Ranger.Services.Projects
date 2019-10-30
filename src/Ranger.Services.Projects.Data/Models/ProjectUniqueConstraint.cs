@@ -11,7 +11,9 @@ namespace Ranger.Services.Projects.Data
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public Guid ProjectId { get; set; }
         [Required]
-        public Guid ApiKey { get; set; }
+        public string HashedLiveApiKey { get; set; }
+        [Required]
+        public string HashedTestApiKey { get; set; }
         [Required]
         [StringLength(140)]
         public string Name { get; set; }

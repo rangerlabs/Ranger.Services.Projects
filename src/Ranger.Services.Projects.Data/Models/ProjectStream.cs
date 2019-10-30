@@ -5,7 +5,7 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectStream<TDataType> : IEventStreamDbSet<TDataType>
+    public class ProjectStream : IEventStreamDbSet
     {
         [Required]
         public string DatabaseUsername { get; set; }
@@ -14,8 +14,6 @@ namespace Ranger.Services.Projects.Data
         public int Id { get; set; }
         [Required]
         public Guid StreamId { get; set; }
-        [Required]
-        public ProjectUniqueConstraint ProjectUniqueConstraint { get; set; }
         [Required]
         public int Version { get; set; }
         [Required]

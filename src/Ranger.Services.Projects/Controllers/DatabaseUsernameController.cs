@@ -1,7 +1,10 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Ranger.Common;
 using Ranger.Services.Projects.Data;
 
 namespace Ranger.Services.Projects.Controllers
@@ -21,17 +24,20 @@ namespace Ranger.Services.Projects.Controllers
         [HttpGet("project/{apikey}/databaseusername")]
         public async Task<IActionResult> GetDbUsernameByApiKey([FromRoute] string apiKey)
         {
-            Guid parsedApiKey;
-            if (!Guid.TryParse(apiKey, out parsedApiKey))
+
+            if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
             {
-                return BadRequest("Unable to parse the Api Key");
+                var dbUsername = await projectUniqueContraintRepository.GetDatabaseUsernameByApiKeyAsync(apiKey);
+                if (String.IsNullOrWhiteSpace(dbUsername))
+                {
+                    return NotFound();
+                }
+                return Ok(new { DatabaseUsername = dbUsername });
             }
-            var dbUsername = await projectUniqueContraintRepository.GetDatabaseUsernameByApiKeyAsync(parsedApiKey);
-            if (String.IsNullOrWhiteSpace(dbUsername))
-            {
-                return NotFound();
-            }
-            return Ok(new { DatabaseUsername = dbUsername });
+
+            var apiErrorContent = new ApiErrorContent();
+            apiErrorContent.Errors.Add("The API key does not have a valid prefix.");
+            return BadRequest(apiErrorContent);
         }
     }
 }

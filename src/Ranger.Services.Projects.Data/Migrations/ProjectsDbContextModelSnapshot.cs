@@ -37,7 +37,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.ToTable("data_protection_keys");
                 });
 
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
+            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -63,9 +63,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsRequired()
                         .HasColumnName("inserted_by");
 
-                    b.Property<Guid>("ProjectUniqueConstraintProjectId")
-                        .HasColumnName("project_unique_constraint_project_id");
-
                     b.Property<Guid>("StreamId")
                         .HasColumnName("stream_id");
 
@@ -75,9 +72,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_project_streams");
 
-                    b.HasIndex("ProjectUniqueConstraintProjectId")
-                        .HasName("ix_project_streams_project_unique_constraint_project_id");
-
                     b.ToTable("project_streams");
                 });
 
@@ -86,12 +80,17 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnName("project_id");
 
-                    b.Property<Guid>("ApiKey")
-                        .HasColumnName("api_key");
-
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
                         .HasColumnName("database_username");
+
+                    b.Property<string>("HashedLiveApiKey")
+                        .IsRequired()
+                        .HasColumnName("hashed_live_api_key");
+
+                    b.Property<string>("HashedTestApiKey")
+                        .IsRequired()
+                        .HasColumnName("hashed_test_api_key");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -101,22 +100,16 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.HasKey("ProjectId")
                         .HasName("pk_project_unique_constraints");
 
-                    b.HasIndex("DatabaseUsername", "ApiKey")
+                    b.HasIndex("DatabaseUsername", "HashedLiveApiKey")
+                        .IsUnique();
+
+                    b.HasIndex("DatabaseUsername", "HashedTestApiKey")
                         .IsUnique();
 
                     b.HasIndex("DatabaseUsername", "Name")
                         .IsUnique();
 
                     b.ToTable("project_unique_constraints");
-                });
-
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream<Ranger.Services.Projects.Data.Project>", b =>
-                {
-                    b.HasOne("Ranger.Services.Projects.Data.ProjectUniqueConstraint", "ProjectUniqueConstraint")
-                        .WithMany()
-                        .HasForeignKey("ProjectUniqueConstraintProjectId")
-                        .HasConstraintName("fk_project_streams_project_unique_constraints_project_unique_con~")
-                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }
