@@ -15,8 +15,6 @@ namespace Ranger.Services.Projects.Data
         [Required]
         public Guid StreamId { get; set; }
         [Required]
-        public ProjectUniqueConstraint ProjectUniqueConstraint { get; set; }
-        [Required]
         public int Version { get; set; }
         [Required]
         [Column(TypeName = "jsonb")]

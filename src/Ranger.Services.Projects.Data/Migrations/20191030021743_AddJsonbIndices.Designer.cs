@@ -10,8 +10,8 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191025025241_Initial")]
-    partial class Initial
+    [Migration("20191030021743_AddJsonbIndices")]
+    partial class AddJsonbIndices
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -65,9 +65,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsRequired()
                         .HasColumnName("inserted_by");
 
-                    b.Property<Guid>("ProjectUniqueConstraintProjectId")
-                        .HasColumnName("project_unique_constraint_project_id");
-
                     b.Property<Guid>("StreamId")
                         .HasColumnName("stream_id");
 
@@ -76,9 +73,6 @@ namespace Ranger.Services.Projects.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_project_streams");
-
-                    b.HasIndex("ProjectUniqueConstraintProjectId")
-                        .HasName("ix_project_streams_project_unique_constraint_project_id");
 
                     b.ToTable("project_streams");
                 });
@@ -118,15 +112,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("project_unique_constraints");
-                });
-
-            modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectStream", b =>
-                {
-                    b.HasOne("Ranger.Services.Projects.Data.ProjectUniqueConstraint", "ProjectUniqueConstraint")
-                        .WithMany()
-                        .HasForeignKey("ProjectUniqueConstraintProjectId")
-                        .HasConstraintName("fk_project_streams_project_unique_constraints_project_unique_con~")
-                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }

@@ -23,6 +23,25 @@ namespace Ranger.Services.Projects.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "project_streams",
+                columns: table => new
+                {
+                    id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                    database_username = table.Column<string>(nullable: false),
+                    stream_id = table.Column<Guid>(nullable: false),
+                    version = table.Column<int>(nullable: false),
+                    data = table.Column<string>(type: "jsonb", nullable: false),
+                    @event = table.Column<string>(name: "event", nullable: false),
+                    inserted_at = table.Column<DateTime>(nullable: false),
+                    inserted_by = table.Column<string>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_project_streams", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "project_unique_constraints",
                 columns: table => new
                 {
@@ -36,37 +55,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                 {
                     table.PrimaryKey("pk_project_unique_constraints", x => x.project_id);
                 });
-
-            migrationBuilder.CreateTable(
-                name: "project_streams",
-                columns: table => new
-                {
-                    id = table.Column<int>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
-                    database_username = table.Column<string>(nullable: false),
-                    stream_id = table.Column<Guid>(nullable: false),
-                    project_unique_constraint_project_id = table.Column<Guid>(nullable: false),
-                    version = table.Column<int>(nullable: false),
-                    data = table.Column<string>(type: "jsonb", nullable: false),
-                    @event = table.Column<string>(name: "event", nullable: false),
-                    inserted_at = table.Column<DateTime>(nullable: false),
-                    inserted_by = table.Column<string>(nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_project_streams", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_project_streams_project_unique_constraints_project_unique_con~",
-                        column: x => x.project_unique_constraint_project_id,
-                        principalTable: "project_unique_constraints",
-                        principalColumn: "project_id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_project_streams_project_unique_constraint_project_id",
-                table: "project_streams",
-                column: "project_unique_constraint_project_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_project_unique_constraints_database_username_hashed_live_ap~",

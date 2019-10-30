@@ -37,11 +37,9 @@ namespace Ranger.Services.Projects.Data
         {
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
 
-            var projectUniqueConstraint = this.AddProjectUniqueConstraints(project);
             var newProjectStream = new ProjectStream()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
-                ProjectUniqueConstraint = projectUniqueConstraint,
                 StreamId = Guid.NewGuid(),
                 Version = 0,
                 Data = serializedNewProjectData,
@@ -49,6 +47,7 @@ namespace Ranger.Services.Projects.Data
                 InsertedAt = DateTime.UtcNow,
                 InsertedBy = userEmail,
             };
+            var projectUniqueConstraint = this.AddProjectUniqueConstraints(newProjectStream, project);
             Context.ProjectStreams.Add(newProjectStream);
             try
             {
@@ -167,6 +166,7 @@ namespace Ranger.Services.Projects.Data
                     var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
                     currentProject.LiveApiKeyPrefix = newApiKeyPrefix;
                     currentProject.HashedLiveApiKey = hashedApiKeyGuid;
+                    uniqueConstraint.HashedLiveApiKey = hashedApiKeyGuid;
                 }
                 else
                 {
@@ -174,13 +174,13 @@ namespace Ranger.Services.Projects.Data
                     var newApiKeyPrefix = "test." + newApiKeyGuid.Substring(0, 6);
                     var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
                     currentProject.TestApiKeyPrefix = newApiKeyPrefix;
-                    currentProject.HashedTestApiKey = newApiKeyGuid;
+                    currentProject.HashedTestApiKey = hashedApiKeyGuid;
+                    uniqueConstraint.HashedTestApiKey = hashedApiKeyGuid;
                 }
 
                 var updatedProjectStream = new ProjectStream()
                 {
                     DatabaseUsername = this.contextTenant.DatabaseUsername,
-                    ProjectUniqueConstraint = uniqueConstraint,
                     StreamId = currentProjectStream.StreamId,
                     Version = version,
                     Data = JsonConvert.SerializeObject(currentProject),
@@ -189,6 +189,7 @@ namespace Ranger.Services.Projects.Data
                     InsertedBy = userEmail,
                 };
 
+                Context.Update(uniqueConstraint);
                 Context.ProjectStreams.Add(updatedProjectStream);
                 try
                 {
@@ -239,12 +240,11 @@ namespace Ranger.Services.Projects.Data
             var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(parsedProjectId);
             var deleted = false;
             var maxConcurrencyAttempts = 3;
-            while (!deleted || maxConcurrencyAttempts != 0)
+            while (!deleted && maxConcurrencyAttempts != 0)
             {
                 var updatedProjectStream = new ProjectStream()
                 {
                     DatabaseUsername = this.contextTenant.DatabaseUsername,
-                    ProjectUniqueConstraint = uniqueConstraint,
                     StreamId = currentProjectStream.StreamId,
                     Version = currentProjectStream.Version + 1,
                     Data = JsonConvert.SerializeObject(currentProject),
@@ -252,12 +252,13 @@ namespace Ranger.Services.Projects.Data
                     InsertedAt = DateTime.UtcNow,
                     InsertedBy = userEmail,
                 };
-                // Context.ProjectUniqueConstraints.Remove(await Context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
+                Context.ProjectUniqueConstraints.Remove(await Context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
                 Context.ProjectStreams.Add(updatedProjectStream);
                 try
                 {
                     await Context.SaveChangesAsync();
                     deleted = true;
+                    logger.LogInformation($"Project {currentProject.Name} deleted.");
                 }
                 catch (DbUpdateException ex)
                 {
@@ -269,7 +270,7 @@ namespace Ranger.Services.Projects.Data
                         {
                             case ProjectJsonbConstraintNames.ProjectId_Version:
                                 {
-                                    logger.LogError($"The update version number was outdated. The current and updated stream version is '{currentProjectStream.Version + 1}'.");
+                                    logger.LogError($"The update version number was outdated. The current and updated stream versions are '{currentProjectStream.Version + 1}'.");
                                     maxConcurrencyAttempts--;
                                     continue;
                                 }
@@ -277,8 +278,6 @@ namespace Ranger.Services.Projects.Data
                     }
                     throw;
                 }
-
-                logger.LogInformation("Project deleted.");
             }
         }
 
@@ -313,16 +312,13 @@ namespace Ranger.Services.Projects.Data
             ValidateDataJsonInequality(currentProjectStream, serializedNewProjectData);
 
             var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.ProjectId);
-            if (project.Name != outdatedProject.Name)
-            {
-                uniqueConstraint.Name = project.Name;
-                Context.Update(uniqueConstraint);
-            }
+            uniqueConstraint.Name = project.Name;
+            uniqueConstraint.HashedLiveApiKey = project.HashedLiveApiKey;
+            uniqueConstraint.HashedTestApiKey = project.HashedTestApiKey;
 
             var updatedProjectStream = new ProjectStream()
             {
                 DatabaseUsername = this.contextTenant.DatabaseUsername,
-                ProjectUniqueConstraint = uniqueConstraint,
                 StreamId = currentProjectStream.StreamId,
                 Version = version,
                 Data = serializedNewProjectData,
@@ -331,6 +327,7 @@ namespace Ranger.Services.Projects.Data
                 InsertedBy = userEmail,
             };
 
+            Context.Update(uniqueConstraint);
             Context.ProjectStreams.Add(updatedProjectStream);
             try
             {
@@ -400,7 +397,7 @@ namespace Ranger.Services.Projects.Data
             return await Context.ProjectUniqueConstraints.SingleOrDefaultAsync(_ => _.ProjectId == projectId);
         }
 
-        private ProjectUniqueConstraint AddProjectUniqueConstraints(Project project)
+        private ProjectUniqueConstraint AddProjectUniqueConstraints(ProjectStream projectStream, Project project)
         {
             var newProjectUniqueConstraint = new ProjectUniqueConstraint
             {
