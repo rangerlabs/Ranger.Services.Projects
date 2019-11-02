@@ -33,7 +33,7 @@ namespace Ranger.Services.Projects.Data
             this.logger = logger;
         }
 
-        public async Task AddProjectAsync(string domain, string userEmail, string eventName, Project project)
+        public async Task AddProjectAsync(string userEmail, string eventName, Project project)
         {
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
 
@@ -117,7 +117,7 @@ namespace Ranger.Services.Projects.Data
             {
                 throw new ArgumentException($"{nameof(projectId)} was null or whitespace.");
             }
-            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'ProjectId' = {projectId} AND data ->> 'Deleted' = 'false' ORDER BY Version DESC").FirstOrDefaultAsync();
+            var projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'ProjectId' = {projectId} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstOrDefaultAsync();
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
@@ -138,11 +138,11 @@ namespace Ranger.Services.Projects.Data
             ProjectStream projectStream = null;
             if (apiKey.StartsWith("live."))
             {
-                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'HashedLiveApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY Version DESC").FirstAsync();
+                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'HashedLiveApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
             }
             if (apiKey.StartsWith("test."))
             {
-                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'HashedTestApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY Version DESC").FirstAsync();
+                projectStream = await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'HashedTestApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
             }
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
@@ -155,7 +155,7 @@ namespace Ranger.Services.Projects.Data
             }
 
             Context.ProjectStreams.RemoveRange(
-                await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} ORDER BY Version DESC").ToListAsync()
+                await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} ORDER BY version DESC").ToListAsync()
             );
         }
 
@@ -248,6 +248,10 @@ namespace Ranger.Services.Projects.Data
 
         public async Task SoftDeleteAsync(string userEmail, string projectId)
         {
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+            }
             if (string.IsNullOrWhiteSpace(projectId))
             {
                 throw new ArgumentException($"{nameof(projectId)} was null or whitespace.");
@@ -387,7 +391,7 @@ namespace Ranger.Services.Projects.Data
 
         private async Task<ProjectStream> GetProjectStreamByProjectNameAsync(string name)
         {
-            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} AND data ->> 'Deleted' = 'false' ORDER BY Version DESC").FirstOrDefaultAsync();
+            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstOrDefaultAsync();
         }
 
         private static void ValidateDataJsonInequality(ProjectStream currentProjectStream, string serializedNewProjectData)
@@ -414,7 +418,7 @@ namespace Ranger.Services.Projects.Data
 
         private async Task<ProjectStream> GetProjectStreamByProjectIdAsync(string projectId)
         {
-            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'ProjectId' = {projectId} AND data -> 'Deleted' = 'false' ORDER BY Version DESC").FirstOrDefaultAsync();
+            return await Context.ProjectStreams.FromSql($"SELECT * FROM project_streams WHERE data ->> 'ProjectId' = {projectId} AND data -> 'Deleted' = 'false' ORDER BY version DESC").FirstOrDefaultAsync();
         }
 
         public async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId)

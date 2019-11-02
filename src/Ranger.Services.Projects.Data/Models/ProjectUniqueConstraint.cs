@@ -5,19 +5,23 @@ using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectUniqueConstraint : IRowLevelSecurityDbSet
+    public class ProjectUniqueConstraint
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public Guid ProjectId { get; set; }
+
+        [Required]
+        public string DatabaseUsername { get; set; }
+
         [Required]
         public string HashedLiveApiKey { get; set; }
+
         [Required]
         public string HashedTestApiKey { get; set; }
+
         [Required]
         [StringLength(140)]
         public string Name { get; set; }
-        [Required]
-        public string DatabaseUsername { get; set; }
     }
 }
