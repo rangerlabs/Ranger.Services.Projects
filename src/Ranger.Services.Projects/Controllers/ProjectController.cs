@@ -389,7 +389,7 @@ namespace Ranger.Services.Projects
             };
             try
             {
-                await repo.AddProjectAsync(domain, projectModel.UserEmail, "ProjectCreated", project);
+                await repo.AddProjectAsync(projectModel.UserEmail, "ProjectCreated", project);
             }
             catch (EventStreamDataConstraintException ex)
             {
