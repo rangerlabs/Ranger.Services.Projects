@@ -6,7 +6,7 @@ namespace Ranger.Services.Projects.Data
 {
     public interface IProjectsRepository : IRepository
     {
-        Task AddProjectAsync(string domain, string userEmail, string eventName, Project project);
+        Task AddProjectAsync(string userEmail, string eventName, Project project);
         Task RemoveProjectAsync(string name);
         Task SoftDeleteAsync(string userEmail, string projectId);
         Task<IEnumerable<(Project project, int version)>> GetAllProjects();
