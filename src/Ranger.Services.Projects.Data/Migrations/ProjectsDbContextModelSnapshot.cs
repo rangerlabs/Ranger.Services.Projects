@@ -111,6 +111,42 @@ namespace Ranger.Services.Projects.Data.Migrations
 
                     b.ToTable("project_unique_constraints");
                 });
+
+            modelBuilder.Entity("Ranger.Services.Projects.ProjectUser", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("DatabaseUsername")
+                        .IsRequired()
+                        .HasColumnName("database_username");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnName("inserted_at");
+
+                    b.Property<string>("InsertedBy")
+                        .IsRequired()
+                        .HasColumnName("inserted_by");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnName("user_id");
+
+                    b.HasKey("ProjectId")
+                        .HasName("pk_project_users");
+
+                    b.HasIndex("ProjectId", "Email")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("project_users");
+                });
 #pragma warning restore 612, 618
         }
     }

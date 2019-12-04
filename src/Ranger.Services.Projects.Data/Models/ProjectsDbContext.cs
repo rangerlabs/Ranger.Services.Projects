@@ -19,6 +19,7 @@ namespace Ranger.Services.Projects.Data
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<ProjectStream> ProjectStreams { get; set; }
         public DbSet<ProjectUniqueConstraint> ProjectUniqueConstraints { get; set; }
+        public DbSet<ProjectUser> ProjectUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,6 +64,9 @@ namespace Ranger.Services.Projects.Data
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.Name }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.HashedLiveApiKey }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.HashedTestApiKey }).IsUnique();
+
+            modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.UserId }).IsUnique();
+            modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.Email }).IsUnique();
         }
     }
 }

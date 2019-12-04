@@ -22,11 +22,9 @@ namespace Ranger.Services.Projects.Data
         private readonly ProjectsDbContext.Factory context;
         private readonly CloudSqlOptions cloudSqlOptions;
         private readonly ILogger<BaseRepository<ProjectsRepository>> logger;
-        private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
 
-        public ProjectsRepository(ContextTenant contextTenant, ProjectsDbContext.Factory context, IProjectUniqueContraintRepository projectUniqueContraintRepository, CloudSqlOptions cloudSqlOptions, ILogger<BaseRepository<ProjectsRepository>> logger) : base(contextTenant, context, cloudSqlOptions, logger)
+        public ProjectsRepository(ContextTenant contextTenant, ProjectsDbContext.Factory context, CloudSqlOptions cloudSqlOptions, ILogger<BaseRepository<ProjectsRepository>> logger) : base(contextTenant, context, cloudSqlOptions, logger)
         {
-            this.projectUniqueContraintRepository = projectUniqueContraintRepository;
             this.contextTenant = contextTenant;
             this.context = context;
             this.cloudSqlOptions = cloudSqlOptions;
@@ -266,7 +264,6 @@ namespace Ranger.Services.Projects.Data
             var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
             currentProject.Deleted = true;
 
-            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(parsedProjectId);
             var deleted = false;
             var maxConcurrencyAttempts = 3;
             while (!deleted && maxConcurrencyAttempts != 0)
