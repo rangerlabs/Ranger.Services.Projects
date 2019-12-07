@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:3.0 AS build-env
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
 WORKDIR /app
 
 ARG MYGET_API_KEY
@@ -22,7 +22,7 @@ COPY ./scripts ./scripts
 RUN ./scripts/create-nuget-config.sh ${MYGET_API_KEY}
 RUN dotnet publish -c ${BUILD_CONFIG} -o /app/published 
 
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.0
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
 WORKDIR /app
 COPY --from=build-env /app/published .
 COPY --from=build-env /app/vsdbg ./vsdbg
