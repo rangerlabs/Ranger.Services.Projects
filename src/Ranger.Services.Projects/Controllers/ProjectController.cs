@@ -22,17 +22,60 @@ namespace Ranger.Services.Projects
         private readonly IBusPublisher busPublisher;
         private readonly ProjectsRepository.Factory projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
+        private readonly ProjectUsersRepository.Factory projectUsersRepositoryFactory;
 
-        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectsRepository.Factory projectsRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
         {
+            this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this.busPublisher = busPublisher;
             this.tenantsClient = tenantsClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
             this.logger = logger;
         }
 
+        [HttpGet("{domain}/project/authorized/{email}")]
+        public async Task<IActionResult> GetProjectIdsForUser([FromRoute] string domain, [FromRoute] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                var apiErrorContent = new ApiErrorContent();
+                apiErrorContent.Errors.Add($"{nameof(email)} was null or whitespace.");
+                return BadRequest(apiErrorContent);
+            }
+
+            ContextTenant tenant = null;
+            try
+            {
+                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+            }
+            catch (HttpClientException ex)
+            {
+                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    return NotFound();
+                }
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            var repo = projectUsersRepositoryFactory.Invoke(tenant);
+            IEnumerable<string> projectIds = new List<string>();
+            try
+            {
+                projectIds = await repo.GetAuthorizedProjectIdsForUserEmail(email);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, $"Failed to get Project Ids for user {email}.");
+            }
+            return Ok(projectIds);
+        }
+
         [HttpGet("{domain}/project")]
-        public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery]string apiKey)
+        public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery] string apiKey)
         {
             ContextTenant tenant = null;
             try
@@ -65,7 +108,7 @@ namespace Ranger.Services.Projects
         }
 
         [HttpGet("{domain}/project/all")]
-        public async Task<IActionResult> GetProjects([FromRoute]string domain)
+        public async Task<IActionResult> GetProjects([FromRoute] string domain)
         {
             ContextTenant tenant = null;
             try
@@ -88,16 +131,16 @@ namespace Ranger.Services.Projects
             var repo = projectsRepositoryFactory.Invoke(tenant);
             IEnumerable<(Project project, int version)> projects = await repo.GetAllProjects();
             var result = projects.Select((_) =>
-            new
-            {
-                Description = _.project.Description,
-                Enabled = _.project.Enabled,
-                Name = _.project.Name,
-                ProjectId = _.project.ProjectId,
-                LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
-                TestApiKeyPrefix = _.project.TestApiKeyPrefix,
-                Version = _.version
-            });
+               new
+               {
+                   Description = _.project.Description,
+                   Enabled = _.project.Enabled,
+                   Name = _.project.Name,
+                   ProjectId = _.project.ProjectId,
+                   LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
+                   TestApiKeyPrefix = _.project.TestApiKeyPrefix,
+                   Version = _.version
+               });
             return Ok(result);
         }
 
@@ -167,7 +210,6 @@ namespace Ranger.Services.Projects
             var invalidEnvironmentErrors = new ApiErrorContent();
             invalidEnvironmentErrors.Errors.Add("Invalid environment name. Expected either 'live' or 'test'.");
             return BadRequest(invalidEnvironmentErrors);
-
         }
 
         [HttpPut("{domain}/project/{projectId}")]
@@ -213,8 +255,7 @@ namespace Ranger.Services.Projects
 
             try
             {
-                updatedProject = await repo.UpdateProjectAsync
-                (
+                updatedProject = await repo.UpdateProjectAsync(
                     projectModel.UserEmail,
                     "ProjectUpdated",
                     projectModel.Version,
@@ -264,7 +305,7 @@ namespace Ranger.Services.Projects
         }
 
         [HttpDelete("{domain}/project/{projectId}")]
-        public async Task<IActionResult> SoftDeleteProject([FromRoute]string domain, [FromRoute]string projectId, [FromBody]SoftDeleteModel softDeleteModel)
+        public async Task<IActionResult> SoftDeleteProject([FromRoute] string domain, [FromRoute] string projectId, [FromBody] SoftDeleteModel softDeleteModel)
         {
             ContextTenant tenant = null;
             try
@@ -297,9 +338,8 @@ namespace Ranger.Services.Projects
             }
         }
 
-
         [HttpPost("{domain}/project")]
-        public async Task<IActionResult> PostProject([FromRoute]string domain, PostProjectModel projectModel)
+        public async Task<IActionResult> PostProject([FromRoute] string domain, PostProjectModel projectModel)
         {
             ContextTenant tenant = null;
             try
@@ -371,7 +411,6 @@ namespace Ranger.Services.Projects
                 adequatelyDifferentPrefixes = charDiffCount == 2;
             }
             while (!adequatelyDifferentPrefixes);
-
 
             var hashedLiveApiKey = Crypto.GenerateSHA512Hash(liveApiKeyGuid);
             var hashedTestApiKey = Crypto.GenerateSHA512Hash(testApiKeyGuid);
