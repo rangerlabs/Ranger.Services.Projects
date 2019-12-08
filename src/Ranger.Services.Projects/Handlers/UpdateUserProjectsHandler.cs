@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -49,17 +50,25 @@ namespace Ranger.Services.Projects
             }
 
             var projectUsersRepository = projectUsersRepositoryFactory.Invoke(tenant);
-            var authorizedProjectIds = await projectUsersRepository.GetAuthorizedProjectIdsForUserEmail(command.Email);
+            var currentlyAuthorizedProjectIds = await projectUsersRepository.GetAuthorizedProjectIdsForUserEmail(command.Email);
 
-            var distinctNewProjectIds = authorizedProjectIds.Distinct();
-            var alreadyAuthorizedProjects = distinctNewProjectIds.Intersect(authorizedProjectIds);
+            var distinctNewProjectIds = command.ProjectIds.Distinct();
+            var alreadyAuthorizedProjects = currentlyAuthorizedProjectIds.Intersect(distinctNewProjectIds);
 
-            var projectsToAdd = alreadyAuthorizedProjects.Except(distinctNewProjectIds);
-            var projectsToRemove = alreadyAuthorizedProjects.Except(distinctNewProjectIds).Except(alreadyAuthorizedProjects);
+            var projectsToAdd = distinctNewProjectIds.Except(alreadyAuthorizedProjects);
+            var projectsToRemove = currentlyAuthorizedProjectIds.Except(alreadyAuthorizedProjects);
 
-            var failedAdds = await projectUsersRepository.AddUserToProjects(command.UserId, command.Email, projectsToAdd, command.CommandingUserEmail);
-            var failedRemoves = await projectUsersRepository.RemoveUserFromProjects(command.UserId, projectsToRemove, command.CommandingUserEmail);
-            busPublisher.Publish(new UserProjectsUpdated(command.UserId, command.Email, failedAdds, failedRemoves), context);
+            IEnumerable<string> failedAdds = null;
+            IEnumerable<string> failedRemoves = null;
+            if (projectsToAdd.Count() > 0)
+            {
+                failedAdds = await projectUsersRepository.AddUserToProjects(command.UserId, command.Email, projectsToAdd, command.CommandingUserEmail);
+            }
+            if (projectsToRemove.Count() > 0)
+            {
+                failedRemoves = await projectUsersRepository.RemoveUserFromProjects(command.UserId, projectsToRemove, command.CommandingUserEmail);
+            }
+            busPublisher.Publish(new UserProjectsUpdated(command.UserId, command.Email, failedAdds ?? new List<string>(), failedRemoves ?? new List<string>()), context);
         }
     }
 }

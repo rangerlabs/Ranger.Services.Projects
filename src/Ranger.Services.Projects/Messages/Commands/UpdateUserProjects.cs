@@ -32,10 +32,6 @@ namespace Ranger.Services.Projects
             {
                 throw new ArgumentException($"{nameof(projectIds)} was null.");
             }
-            if (projectIds.Count() == 0)
-            {
-                throw new ArgumentOutOfRangeException($"{nameof(projectIds)} contained no projectIds.");
-            }
             if (string.IsNullOrWhiteSpace(commandingUserEmail))
             {
                 throw new ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace.");
