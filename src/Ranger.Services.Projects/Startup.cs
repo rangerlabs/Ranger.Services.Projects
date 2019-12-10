@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
 using Ranger.Common;
@@ -21,32 +22,36 @@ namespace Ranger.Services.Projects
 {
     public class Startup
     {
+        private readonly IWebHostEnvironment Environment;
         private readonly IConfiguration configuration;
-        private readonly ILoggerFactory loggerFactory;
-        private readonly ILogger<Startup> logger;
-        private IContainer container;
+        private ILoggerFactory loggerFactory;
         private IBusSubscriber busSubscriber;
 
-        public Startup(IConfiguration configuration, ILoggerFactory loggerFactory, ILogger<Startup> logger)
+        public Startup(IWebHostEnvironment environment, IConfiguration configuration)
         {
+            this.Environment = environment;
             this.configuration = configuration;
-            this.loggerFactory = loggerFactory;
-            this.logger = logger;
         }
 
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvcCore(options =>
-            {
-                var policy = ScopePolicy.Create("projectsApi");
-                options.Filters.Add(new AuthorizeFilter(policy));
-            })
-                .AddAuthorization()
-                .AddJsonFormatters()
-                .AddJsonOptions(options =>
+            services.AddControllers(options =>
+                {
+                    options.EnableEndpointRouting = false;
+                })
+                .AddNewtonsoftJson(options =>
                 {
                     options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("projectsApi", policyBuilder =>
+                {
+                    policyBuilder.RequireScope("projectsApi");
+                });
+            });
 
             services.AddEntityFrameworkNpgsql().AddDbContext<ProjectsDbContext>((serviceProvider, options) =>
             {
@@ -78,29 +83,38 @@ namespace Ranger.Services.Projects
             services.AddDataProtection()
                 .ProtectKeysWithCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
                 .PersistKeysToDbContext<ProjectsDbContext>();
+        }
 
-            var builder = new ContainerBuilder();
-            builder.Populate(services);
+
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
             builder.RegisterInstance<CloudSqlOptions>(configuration.GetOptions<CloudSqlOptions>("cloudSql"));
             builder.RegisterType<ProjectsDbContext>().InstancePerDependency();
             builder.RegisterType<ProjectUniqueContraintRepository>().As<IProjectUniqueContraintRepository>();
             builder.RegisterAssemblyTypes(typeof(BaseRepository<>).Assembly).AsClosedTypesOf(typeof(BaseRepository<>)).InstancePerDependency();
             builder.AddRabbitMq(loggerFactory);
-            container = builder.Build();
-            return new AutofacServiceProvider(container);
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime applicationLifetime)
+        public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
         {
+            this.loggerFactory = loggerFactory;
             applicationLifetime.ApplicationStopping.Register(OnShutdown);
+
+            app.UseRouting();
             app.UseAuthentication();
-            app.UseMvcWithDefaultRoute();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
             this.busSubscriber = app.UseRabbitMQ()
                 .SubscribeCommand<InitializeTenant>((c, e) =>
                    new InitializeTenantRejected(e.Message, "")
                 )
                 .SubscribeCommand<CreateProject>((c, ex) =>
                     new CreateProjectRejected(ex.Message, "")
+                )
+                .SubscribeCommand<UpdateUserProjects>((c, ex) =>
+                    new UpdateUserProjectsRejected(ex.Message, "")
                 );
         }
 

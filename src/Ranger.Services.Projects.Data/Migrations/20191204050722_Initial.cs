@@ -46,14 +46,30 @@ namespace Ranger.Services.Projects.Data.Migrations
                 columns: table => new
                 {
                     project_id = table.Column<Guid>(nullable: false),
+                    database_username = table.Column<string>(nullable: false),
                     hashed_live_api_key = table.Column<string>(nullable: false),
                     hashed_test_api_key = table.Column<string>(nullable: false),
-                    name = table.Column<string>(maxLength: 140, nullable: false),
-                    database_username = table.Column<string>(nullable: false)
+                    name = table.Column<string>(maxLength: 140, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_project_unique_constraints", x => x.project_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "project_users",
+                columns: table => new
+                {
+                    project_id = table.Column<Guid>(nullable: false),
+                    database_username = table.Column<string>(nullable: false),
+                    user_id = table.Column<string>(nullable: false),
+                    email = table.Column<string>(nullable: false),
+                    inserted_at = table.Column<DateTime>(nullable: false),
+                    inserted_by = table.Column<string>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_project_users", x => x.project_id);
                 });
 
             migrationBuilder.CreateIndex(
@@ -73,6 +89,18 @@ namespace Ranger.Services.Projects.Data.Migrations
                 table: "project_unique_constraints",
                 columns: new[] { "database_username", "name" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_project_users_project_id_email",
+                table: "project_users",
+                columns: new[] { "project_id", "email" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_project_users_project_id_user_id",
+                table: "project_users",
+                columns: new[] { "project_id", "user_id" },
+                unique: true);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -85,6 +113,9 @@ namespace Ranger.Services.Projects.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "project_unique_constraints");
+
+            migrationBuilder.DropTable(
+                name: "project_users");
         }
     }
 }

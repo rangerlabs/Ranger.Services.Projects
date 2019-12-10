@@ -19,6 +19,7 @@ namespace Ranger.Services.Projects.Data
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<ProjectStream> ProjectStreams { get; set; }
         public DbSet<ProjectUniqueConstraint> ProjectUniqueConstraints { get; set; }
+        public DbSet<ProjectUser> ProjectUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,37 +33,41 @@ namespace Ranger.Services.Projects.Data
             foreach (var entity in modelBuilder.Model.GetEntityTypes())
             {
                 // Remove 'AspNet' prefix and convert table name from PascalCase to snake_case. E.g. AspNetRoleClaims -> role_claims
-                entity.Relational().TableName = entity.Relational().TableName.Replace("AspNet", "").ToSnakeCase();
+                entity.SetTableName(entity.GetTableName().Replace("AspNet", "").ToSnakeCase());
 
                 // Convert column names from PascalCase to snake_case.
                 foreach (var property in entity.GetProperties())
                 {
-                    property.Relational().ColumnName = property.Name.ToSnakeCase();
+                    property.SetColumnName(property.Name.ToSnakeCase());
                 }
 
                 // Convert primary key names from PascalCase to snake_case. E.g. PK_users -> pk_users
                 foreach (var key in entity.GetKeys())
                 {
-                    key.Relational().Name = key.Relational().Name.ToSnakeCase();
+                    key.SetName(key.GetName().ToSnakeCase());
                 }
 
                 // Convert foreign key names from PascalCase to snake_case.
                 foreach (var key in entity.GetForeignKeys())
                 {
-                    key.Relational().Name = key.Relational().Name.ToSnakeCase();
+                    key.SetConstraintName(key.GetConstraintName().ToSnakeCase());
                 }
 
                 // Convert index names from PascalCase to snake_case.
                 foreach (var index in entity.GetIndexes())
                 {
-                    index.Relational().Name = index.Relational().Name.ToSnakeCase();
+                    index.SetName(index.GetName().ToSnakeCase());
                 }
 
                 encryptionHelper?.SetEncrytedPropertyAccessMode(entity);
             }
+
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.Name }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.HashedLiveApiKey }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.DatabaseUsername, _.HashedTestApiKey }).IsUnique();
+
+            modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.UserId }).IsUnique();
+            modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.Email }).IsUnique();
         }
     }
 }

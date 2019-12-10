@@ -10,8 +10,8 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191030021717_AddRowLevelSecurity")]
-    partial class AddRowLevelSecurity
+    [Migration("20191204050722_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -112,6 +112,42 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("project_unique_constraints");
+                });
+
+            modelBuilder.Entity("Ranger.Services.Projects.ProjectUser", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("DatabaseUsername")
+                        .IsRequired()
+                        .HasColumnName("database_username");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnName("inserted_at");
+
+                    b.Property<string>("InsertedBy")
+                        .IsRequired()
+                        .HasColumnName("inserted_by");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnName("user_id");
+
+                    b.HasKey("ProjectId")
+                        .HasName("pk_project_users");
+
+                    b.HasIndex("ProjectId", "Email")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("project_users");
                 });
 #pragma warning restore 612, 618
         }
