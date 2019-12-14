@@ -7,7 +7,9 @@ namespace Ranger.Services.Projects
     public class ProjectUser
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.None)]
+        public int Id { get; set; }
+
+        [Required]
         public Guid ProjectId { get; set; }
 
         [Required]
