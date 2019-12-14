@@ -13,7 +13,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                 columns: table => new
                 {
                     id = table.Column<int>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     friendly_name = table.Column<string>(nullable: true),
                     xml = table.Column<string>(nullable: true)
                 },
@@ -27,7 +27,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                 columns: table => new
                 {
                     id = table.Column<int>(nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     database_username = table.Column<string>(nullable: false),
                     stream_id = table.Column<Guid>(nullable: false),
                     version = table.Column<int>(nullable: false),
@@ -60,6 +60,8 @@ namespace Ranger.Services.Projects.Data.Migrations
                 name: "project_users",
                 columns: table => new
                 {
+                    id = table.Column<int>(nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     project_id = table.Column<Guid>(nullable: false),
                     database_username = table.Column<string>(nullable: false),
                     user_id = table.Column<string>(nullable: false),
@@ -69,7 +71,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_project_users", x => x.project_id);
+                    table.PrimaryKey("pk_project_users", x => x.id);
                 });
 
             migrationBuilder.CreateIndex(

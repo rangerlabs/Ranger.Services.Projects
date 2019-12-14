@@ -10,28 +10,32 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects.Data.Migrations
 {
     [DbContext(typeof(ProjectsDbContext))]
-    [Migration("20191204050853_AddRowLevelSecurity")]
-    partial class AddRowLevelSecurity
+    [Migration("20191214160735_Initial")]
+    partial class Initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.SerialColumn)
-                .HasAnnotation("ProductVersion", "2.2.4-servicing-10062")
+                .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
+                .HasAnnotation("ProductVersion", "3.1.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnName("id");
+                        .HasColumnName("id")
+                        .HasColumnType("integer")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<string>("FriendlyName")
-                        .HasColumnName("friendly_name");
+                        .HasColumnName("friendly_name")
+                        .HasColumnType("text");
 
                     b.Property<string>("Xml")
-                        .HasColumnName("xml");
+                        .HasColumnName("xml")
+                        .HasColumnType("text");
 
                     b.HasKey("Id")
                         .HasName("pk_data_protection_keys");
@@ -43,7 +47,9 @@ namespace Ranger.Services.Projects.Data.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnName("id");
+                        .HasColumnName("id")
+                        .HasColumnType("integer")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<string>("Data")
                         .IsRequired()
@@ -52,24 +58,30 @@ namespace Ranger.Services.Projects.Data.Migrations
 
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
-                        .HasColumnName("database_username");
+                        .HasColumnName("database_username")
+                        .HasColumnType("text");
 
                     b.Property<string>("Event")
                         .IsRequired()
-                        .HasColumnName("event");
+                        .HasColumnName("event")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("InsertedAt")
-                        .HasColumnName("inserted_at");
+                        .HasColumnName("inserted_at")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("InsertedBy")
                         .IsRequired()
-                        .HasColumnName("inserted_by");
+                        .HasColumnName("inserted_by")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("StreamId")
-                        .HasColumnName("stream_id");
+                        .HasColumnName("stream_id")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Version")
-                        .HasColumnName("version");
+                        .HasColumnName("version")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id")
                         .HasName("pk_project_streams");
@@ -80,23 +92,28 @@ namespace Ranger.Services.Projects.Data.Migrations
             modelBuilder.Entity("Ranger.Services.Projects.Data.ProjectUniqueConstraint", b =>
                 {
                     b.Property<Guid>("ProjectId")
-                        .HasColumnName("project_id");
+                        .HasColumnName("project_id")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
-                        .HasColumnName("database_username");
+                        .HasColumnName("database_username")
+                        .HasColumnType("text");
 
                     b.Property<string>("HashedLiveApiKey")
                         .IsRequired()
-                        .HasColumnName("hashed_live_api_key");
+                        .HasColumnName("hashed_live_api_key")
+                        .HasColumnType("text");
 
                     b.Property<string>("HashedTestApiKey")
                         .IsRequired()
-                        .HasColumnName("hashed_test_api_key");
+                        .HasColumnName("hashed_test_api_key")
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnName("name")
+                        .HasColumnType("character varying(140)")
                         .HasMaxLength(140);
 
                     b.HasKey("ProjectId")
@@ -116,29 +133,41 @@ namespace Ranger.Services.Projects.Data.Migrations
 
             modelBuilder.Entity("Ranger.Services.Projects.ProjectUser", b =>
                 {
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnName("project_id");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnName("id")
+                        .HasColumnType("integer")
+                        .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
                     b.Property<string>("DatabaseUsername")
                         .IsRequired()
-                        .HasColumnName("database_username");
+                        .HasColumnName("database_username")
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnName("email");
+                        .HasColumnName("email")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("InsertedAt")
-                        .HasColumnName("inserted_at");
+                        .HasColumnName("inserted_at")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("InsertedBy")
                         .IsRequired()
-                        .HasColumnName("inserted_by");
+                        .HasColumnName("inserted_by")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnName("project_id")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnName("user_id");
+                        .HasColumnName("user_id")
+                        .HasColumnType("text");
 
-                    b.HasKey("ProjectId")
+                    b.HasKey("Id")
                         .HasName("pk_project_users");
 
                     b.HasIndex("ProjectId", "Email")

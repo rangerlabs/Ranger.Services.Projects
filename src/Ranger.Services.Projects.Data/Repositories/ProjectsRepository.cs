@@ -73,6 +73,49 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
+        public async Task<IEnumerable<(Project project, int version)>> GetProjectsForUser(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new ArgumentException($"{nameof(email)} was null or whitespace");
+            }
+
+            var projectStreams = await Context.ProjectStreams.
+            FromSqlInterpolated($@"
+                WITH not_deleted AS(
+	                SELECT 
+	                	ps.id,
+	                	ps.database_username,
+	                	ps.stream_id,
+	                	ps.version,
+	                	ps.data,
+	                	ps.event,
+	                	ps.inserted_at,
+	                	ps.inserted_by
+	                FROM project_streams ps, project_unique_constraints puc
+	                WHERE (ps.data ->> 'Name') = puc.name
+                )
+                SELECT DISTINCT ON (ps.stream_id)
+                	ps.id,
+                	ps.database_username,
+                	ps.stream_id,
+                	ps.version,
+                	ps.data,
+                	ps.event,
+                	ps.inserted_at,
+                	ps.inserted_by
+                FROM not_deleted ps, project_users pu
+                WHERE (ps.data ->> 'ProjectId') = pu.project_id::text
+                AND email = {email} 
+                ORDER BY ps.stream_id, ps.version DESC;").ToListAsync();
+            List<(Project project, int version)> projects = new List<(Project project, int version)>();
+            foreach (var projectStream in projectStreams)
+            {
+                projects.Add((JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version));
+            }
+            return projects;
+        }
+
         public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
         {
             var projectStreams = await Context.ProjectStreams.

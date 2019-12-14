@@ -9,6 +9,7 @@ namespace Ranger.Services.Projects.Data
         Task AddProjectAsync(string userEmail, string eventName, Project project);
         Task RemoveProjectAsync(string name);
         Task SoftDeleteAsync(string userEmail, string projectId);
+        Task<IEnumerable<(Project project, int version)>> GetProjectsForUser(string email);
         Task<IEnumerable<(Project project, int version)>> GetAllProjects();
         Task<Project> GetProjectByProjectIdAsync(string projectId);
         Task<Project> GetProjectByApiKeyAsync(string apiKey);

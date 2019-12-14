@@ -107,8 +107,8 @@ namespace Ranger.Services.Projects
             return Ok(result);
         }
 
-        [HttpGet("{domain}/project/all")]
-        public async Task<IActionResult> GetProjects([FromRoute] string domain)
+        [HttpGet("{domain}/project/{email}")]
+        public async Task<IActionResult> GetProjects([FromRoute] string domain, [FromQuery] string email)
         {
             ContextTenant tenant = null;
             try
