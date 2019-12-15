@@ -61,10 +61,14 @@ namespace Ranger.Services.Projects
             );
 
             services.AddSingleton<ITenantsClient, TenantsClient>(provider =>
-                {
-                    return new TenantsClient("http://tenants:8082", loggerFactory.CreateLogger<TenantsClient>());
-                });
+            {
+                return new TenantsClient("http://tenants:8082", loggerFactory.CreateLogger<TenantsClient>());
+            });
 
+            services.AddSingleton<IIdentityClient, IdentityClient>(provider =>
+            {
+                return new IdentityClient("http://identity:5000", loggerFactory.CreateLogger<IdentityClient>());
+            });
 
             services.AddTransient<IProjectsDbContextInitializer, ProjectsDbContextInitializer>();
             services.AddTransient<ILoginRoleRepository<ProjectsDbContext>, LoginRoleRepository<ProjectsDbContext>>();

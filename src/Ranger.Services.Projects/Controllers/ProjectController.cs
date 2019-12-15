@@ -23,9 +23,11 @@ namespace Ranger.Services.Projects
         private readonly ProjectsRepository.Factory projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
         private readonly ProjectUsersRepository.Factory projectUsersRepositoryFactory;
+        private readonly IIdentityClient identityClient;
 
-        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, IIdentityClient identityClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
         {
+            this.identityClient = identityClient;
             this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this.busPublisher = busPublisher;
             this.tenantsClient = tenantsClient;
@@ -108,7 +110,7 @@ namespace Ranger.Services.Projects
         }
 
         [HttpGet("{domain}/project/{email}")]
-        public async Task<IActionResult> GetProjects([FromRoute] string domain, [FromQuery] string email)
+        public async Task<IActionResult> GetProjects([FromRoute] string domain, [FromRoute] string email)
         {
             ContextTenant tenant = null;
             try
@@ -128,19 +130,45 @@ namespace Ranger.Services.Projects
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
+            RolesEnum role;
+            try
+            {
+                var roleResult = await this.identityClient.GetUserRoleAsync<RoleResponseModel>(domain, email);
+                role = Enum.Parse<RolesEnum>(roleResult.Role);
+            }
+            catch (HttpClientException<RoleResponseModel> ex)
+            {
+                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+            }
+
             var repo = projectsRepositoryFactory.Invoke(tenant);
-            IEnumerable<(Project project, int version)> projects = await repo.GetAllProjects();
+            IEnumerable<(Project project, int version)> projects;
+            if (role == RolesEnum.User)
+            {
+                projects = await repo.GetProjectsForUser(email);
+            }
+            else
+            {
+                projects = await repo.GetAllProjects();
+            }
             var result = projects.Select((_) =>
-               new
-               {
-                   Description = _.project.Description,
-                   Enabled = _.project.Enabled,
-                   Name = _.project.Name,
-                   ProjectId = _.project.ProjectId,
-                   LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
-                   TestApiKeyPrefix = _.project.TestApiKeyPrefix,
-                   Version = _.version
-               });
+                               new
+                               {
+                                   Description = _.project.Description,
+                                   Enabled = _.project.Enabled,
+                                   Name = _.project.Name,
+                                   ProjectId = _.project.ProjectId,
+                                   LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
+                                   TestApiKeyPrefix = _.project.TestApiKeyPrefix,
+                                   Version = _.version
+                               });
             return Ok(result);
         }
 
