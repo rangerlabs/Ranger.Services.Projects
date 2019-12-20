@@ -25,7 +25,7 @@
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="5.0.1" />
     <PackageReference Include="Ranger.Monitoring" Version="2.0.1" />
     <PackageReference Include="Ranger.RabbitMQ" Version="2.0.0" />
-    <PackageReference Include="Ranger.InternalHttpClient" Version="2.0.11" />
+    <PackageReference Include="Ranger.InternalHttpClient" Version="2.0.17" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ranger.Services.Projects.Data\Ranger.Services.Projects.Data.csproj" />
