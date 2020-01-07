@@ -19,17 +19,15 @@ namespace Ranger.Services.Projects
     public class ProjectController : ControllerBase
     {
         private readonly ITenantsClient tenantsClient;
-        private readonly IBusPublisher busPublisher;
         private readonly ProjectsRepository.Factory projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
         private readonly ProjectUsersRepository.Factory projectUsersRepositoryFactory;
         private readonly IIdentityClient identityClient;
 
-        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, IIdentityClient identityClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(ITenantsClient tenantsClient, IIdentityClient identityClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
         {
             this.identityClient = identityClient;
             this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
-            this.busPublisher = busPublisher;
             this.tenantsClient = tenantsClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
             this.logger = logger;
