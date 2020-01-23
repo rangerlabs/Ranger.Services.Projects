@@ -93,7 +93,7 @@ namespace Ranger.Services.Projects.Data
 	                	ps.inserted_at,
 	                	ps.inserted_by
 	                FROM project_streams ps, project_unique_constraints puc
-	                WHERE (ps.data ->> 'Name') = puc.name
+	                WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
                 )
                 SELECT DISTINCT ON (ps.stream_id)
                 	ps.id,
@@ -131,7 +131,7 @@ namespace Ranger.Services.Projects.Data
             	    	ps.inserted_at,
             	    	ps.inserted_by
             	    FROM project_streams ps, project_unique_constraints puc
-            	    WHERE (ps.data ->> 'Name') = puc.name
+            	    WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
                )
                SELECT DISTINCT ON (ps.stream_id) 
               		ps.id,
