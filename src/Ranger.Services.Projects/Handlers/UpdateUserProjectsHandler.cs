@@ -26,7 +26,7 @@ namespace Ranger.Services.Projects
             this.logger = logger;
         }
 
-        //TODO: Currently there is NonSerializedAttribute check of whether a user is authorized to alter the the projects,
+        //TODO: Currently there is no check of whether a user is authorized to alter the the projects,
         // but we should only arrive here through the saga where we have verified whether a user can alter the role or not,
         // still not enough but enough for now
         public async Task HandleAsync(UpdateUserProjects command, ICorrelationContext context)
@@ -40,7 +40,7 @@ namespace Ranger.Services.Projects
             {
                 if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
                 {
-                    throw new RangerException($"To tenant found for domain {command.Domain}.");
+                    throw new RangerException($"No tenant found for domain {command.Domain}.");
                 }
             }
             catch (Exception ex)
