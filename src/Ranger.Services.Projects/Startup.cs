@@ -79,8 +79,6 @@ namespace Ranger.Services.Projects
                     options.Authority = "http://identity:5000/auth";
                     options.ApiName = "projectsApi";
 
-                    //TODO: Change these to true
-                    options.EnableCaching = false;
                     options.RequireHttpsMetadata = false;
                 });
 
@@ -94,9 +92,21 @@ namespace Ranger.Services.Projects
         {
             builder.RegisterInstance<CloudSqlOptions>(configuration.GetOptions<CloudSqlOptions>("cloudSql"));
             builder.RegisterType<ProjectsDbContext>().InstancePerDependency();
+            builder.RegisterType<TenantServiceDbContext>();
             builder.RegisterType<ProjectUniqueContraintRepository>().As<IProjectUniqueContraintRepository>();
-            builder.RegisterAssemblyTypes(typeof(BaseRepository<>).Assembly).AsClosedTypesOf(typeof(BaseRepository<>)).InstancePerDependency();
-            builder.AddRabbitMq(loggerFactory);
+            builder.Register((c, p) =>
+            {
+                var provider = c.Resolve<TenantServiceDbContext>();
+                var (dbContextOptions, contextTenant) = provider.GetDbContextOptions<ProjectsDbContext>(p.TypedAs<string>());
+                return new ProjectUsersRepository(contextTenant, new ProjectsDbContext(dbContextOptions), c.Resolve<ILogger<ProjectUsersRepository>>());
+            });
+            builder.Register((c, p) =>
+            {
+                var provider = c.Resolve<TenantServiceDbContext>();
+                var (dbContextOptions, contextTenant) = provider.GetDbContextOptions<ProjectsDbContext>(p.TypedAs<string>());
+                return new ProjectsRepository(contextTenant, new ProjectsDbContext(dbContextOptions), c.Resolve<ILogger<ProjectsRepository>>());
+            });
+            builder.AddRabbitMq();
         }
 
         public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)

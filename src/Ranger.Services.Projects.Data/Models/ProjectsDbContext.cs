@@ -7,7 +7,6 @@ namespace Ranger.Services.Projects.Data
 {
     public class ProjectsDbContext : DbContext, IDataProtectionKeyContext
     {
-
         public delegate ProjectsDbContext Factory(DbContextOptions<ProjectsDbContext> options);
 
         private readonly IDataProtectionProvider dataProtectionProvider;

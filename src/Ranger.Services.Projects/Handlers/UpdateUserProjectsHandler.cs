@@ -14,11 +14,11 @@ namespace Ranger.Services.Projects
     public class UpdateUserProjectsHandler : ICommandHandler<UpdateUserProjects>
     {
         private readonly IBusPublisher busPublisher;
-        private readonly ProjectUsersRepository.Factory projectUsersRepositoryFactory;
+        private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
         private readonly ILogger<UpdateUserProjectsHandler> logger;
         private readonly ITenantsClient tenantsClient;
 
-        public UpdateUserProjectsHandler(IBusPublisher busPublisher, ITenantsClient tenantsClient, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<UpdateUserProjectsHandler> logger)
+        public UpdateUserProjectsHandler(IBusPublisher busPublisher, ITenantsClient tenantsClient, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<UpdateUserProjectsHandler> logger)
         {
             this.tenantsClient = tenantsClient;
             this.busPublisher = busPublisher;
@@ -31,25 +31,9 @@ namespace Ranger.Services.Projects
         // still not enough but enough for now
         public async Task HandleAsync(UpdateUserProjects command, ICorrelationContext context)
         {
-            ContextTenant tenant = null;
-            try
-            {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(command.Domain);
-            }
-            catch (HttpClientException ex)
-            {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    throw new RangerException($"No tenant found for domain {command.Domain}.");
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
-                throw;
-            }
+            var tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(command.Domain);
 
-            var projectUsersRepository = projectUsersRepositoryFactory.Invoke(tenant);
+            var projectUsersRepository = projectUsersRepositoryFactory.Invoke(tenant.DatabaseUsername);
             var currentlyAuthorizedProjectIds = await projectUsersRepository.GetAuthorizedProjectIdsForUserEmail(command.Email);
 
             var distinctNewProjectIds = command.ProjectIds.Distinct();
@@ -58,8 +42,8 @@ namespace Ranger.Services.Projects
             var projectsToAdd = distinctNewProjectIds.Except(alreadyAuthorizedProjects);
             var projectsToRemove = currentlyAuthorizedProjectIds.Except(alreadyAuthorizedProjects);
 
-            IEnumerable<string> failedAdds = null;
-            IEnumerable<string> failedRemoves = null;
+            IEnumerable<Guid> failedAdds = null;
+            IEnumerable<Guid> failedRemoves = null;
             if (projectsToAdd.Count() > 0)
             {
                 failedAdds = await projectUsersRepository.AddUserToProjects(command.UserId, command.Email, projectsToAdd, command.CommandingUserEmail);
@@ -68,7 +52,7 @@ namespace Ranger.Services.Projects
             {
                 failedRemoves = await projectUsersRepository.RemoveUserFromProjects(command.UserId, projectsToRemove, command.CommandingUserEmail);
             }
-            busPublisher.Publish(new UserProjectsUpdated(command.UserId, command.Email, failedAdds ?? new List<string>(), failedRemoves ?? new List<string>()), context);
+            busPublisher.Publish(new UserProjectsUpdated(command.UserId, command.Email, failedAdds ?? new List<Guid>(), failedRemoves ?? new List<Guid>()), context);
         }
     }
 }

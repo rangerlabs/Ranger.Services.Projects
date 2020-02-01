@@ -10,10 +10,10 @@ namespace Ranger.Services.Projects
     {
         public string Email { get; }
         public string UserId { get; }
-        public IEnumerable<string> UnSuccessfullyAddedProjectIds { get; }
-        public IEnumerable<string> UnSuccessfullyRemovedProjectIds { get; }
+        public IEnumerable<Guid> UnSuccessfullyAddedProjectIds { get; }
+        public IEnumerable<Guid> UnSuccessfullyRemovedProjectIds { get; }
 
-        public UserProjectsUpdated(string userId, string email, IEnumerable<string> unSuccessfullyAddedProjectIds = null, IEnumerable<string> unSuccessfullyRemovedProjectIds = null)
+        public UserProjectsUpdated(string userId, string email, IEnumerable<Guid> unSuccessfullyAddedProjectIds = null, IEnumerable<Guid> unSuccessfullyRemovedProjectIds = null)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
@@ -26,8 +26,8 @@ namespace Ranger.Services.Projects
 
             this.UserId = userId;
             this.Email = email;
-            this.UnSuccessfullyAddedProjectIds = unSuccessfullyAddedProjectIds is null ? new List<string>() : unSuccessfullyAddedProjectIds;
-            this.UnSuccessfullyRemovedProjectIds = unSuccessfullyRemovedProjectIds is null ? new List<string>() : unSuccessfullyRemovedProjectIds;
+            this.UnSuccessfullyAddedProjectIds = unSuccessfullyAddedProjectIds is null ? new List<Guid>() : unSuccessfullyAddedProjectIds;
+            this.UnSuccessfullyRemovedProjectIds = unSuccessfullyRemovedProjectIds is null ? new List<Guid>() : unSuccessfullyRemovedProjectIds;
         }
     }
 }
