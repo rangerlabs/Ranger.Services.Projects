@@ -46,7 +46,7 @@ namespace Ranger.Services.Projects
             IProjectUsersRepository repo;
             try
             {
-                repo = projectUsersRepositoryFactory.Invoke(domain);
+                repo = projectUsersRepositoryFactory(domain);
             }
             catch (Exception)
             {
@@ -72,7 +72,7 @@ namespace Ranger.Services.Projects
             IProjectsRepository repo;
             try
             {
-                repo = projectsRepositoryFactory.Invoke(domain);
+                repo = projectsRepositoryFactory(domain);
             }
             catch (Exception)
             {
@@ -96,7 +96,7 @@ namespace Ranger.Services.Projects
             IProjectsRepository repo;
             try
             {
-                repo = projectsRepositoryFactory.Invoke(domain);
+                repo = projectsRepositoryFactory(domain);
             }
             catch (Exception)
             {
@@ -153,7 +153,7 @@ namespace Ranger.Services.Projects
                 IProjectsRepository repo;
                 try
                 {
-                    repo = projectsRepositoryFactory.Invoke(domain);
+                    repo = projectsRepositoryFactory(domain);
                 }
                 catch (Exception)
                 {
@@ -201,7 +201,7 @@ namespace Ranger.Services.Projects
             IProjectsRepository repo;
             try
             {
-                repo = projectsRepositoryFactory.Invoke(domain);
+                repo = projectsRepositoryFactory(domain);
             }
             catch (Exception)
             {
@@ -274,7 +274,7 @@ namespace Ranger.Services.Projects
             IProjectsRepository repo;
             try
             {
-                repo = projectsRepositoryFactory.Invoke(domain);
+                repo = projectsRepositoryFactory(domain);
             }
             catch (Exception)
             {
@@ -299,7 +299,7 @@ namespace Ranger.Services.Projects
             IProjectsRepository repo;
             try
             {
-                repo = projectsRepositoryFactory.Invoke(domain);
+                repo = projectsRepositoryFactory(domain);
             }
             catch (Exception)
             {

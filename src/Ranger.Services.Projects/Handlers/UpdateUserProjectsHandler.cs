@@ -31,9 +31,7 @@ namespace Ranger.Services.Projects
         // still not enough but enough for now
         public async Task HandleAsync(UpdateUserProjects command, ICorrelationContext context)
         {
-            var tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(command.Domain);
-
-            var projectUsersRepository = projectUsersRepositoryFactory.Invoke(tenant.DatabaseUsername);
+            var projectUsersRepository = projectUsersRepositoryFactory(command.Domain);
             var currentlyAuthorizedProjectIds = await projectUsersRepository.GetAuthorizedProjectIdsForUserEmail(command.Email);
 
             var distinctNewProjectIds = command.ProjectIds.Distinct();
