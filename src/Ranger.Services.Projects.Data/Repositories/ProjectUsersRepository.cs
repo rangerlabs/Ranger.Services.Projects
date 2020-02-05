@@ -10,62 +10,58 @@ using Ranger.Common;
 namespace Ranger.Services.Projects.Data
 {
 
-    public class ProjectUsersRepository : BaseRepository<ProjectUsersRepository>, IProjectUsersRepository
+    public class ProjectUsersRepository : IProjectUsersRepository
     {
         private readonly ContextTenant contextTenant;
-        private readonly ILogger<BaseRepository<ProjectUsersRepository>> logger;
+        private readonly ProjectsDbContext context;
+        private readonly ILogger<ProjectUsersRepository> logger;
 
-        public ProjectUsersRepository(ContextTenant contextTenant, ProjectsDbContext.Factory context, CloudSqlOptions cloudSqlOptions, ILogger<BaseRepository<ProjectUsersRepository>> logger) : base(contextTenant, context, cloudSqlOptions, logger)
+        public ProjectUsersRepository(ContextTenant contextTenant, ProjectsDbContext context, ILogger<ProjectUsersRepository> logger)
         {
-            this.logger = logger;
             this.contextTenant = contextTenant;
+            this.context = context;
+            this.logger = logger;
         }
 
-        public async Task<IEnumerable<string>> GetAuthorizedProjectIdsForUserEmail(string email)
+        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
                 throw new System.ArgumentException($"{nameof(email)} was null or whitespace.");
             }
-            return await Context.ProjectUsers.Where(_ => _.Email == email).Select(_ => _.ProjectId.ToString()).ToListAsync();
+            return await this.context.ProjectUsers.Where(_ => _.Email == email).Select(_ => _.ProjectId).ToListAsync();
         }
 
-        public async Task<IEnumerable<string>> GetAuthorizedProjectIdsForUserId(string userId)
+        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserId(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
                 throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
             }
-            return await Context.ProjectUsers.Where(_ => _.UserId == userId).Select(_ => _.ProjectId.ToString()).ToListAsync();
+            return await this.context.ProjectUsers.Where(_ => _.UserId == userId).Select(_ => _.ProjectId).ToListAsync();
         }
 
-        public async Task<bool> IsUserEmailAuthorizedForProject(string email, string projectId)
+        public async Task<bool> IsUserEmailAuthorizedForProject(string email, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
                 throw new System.ArgumentException($"{nameof(email)} was null or whitespace.");
             }
-            if (string.IsNullOrWhiteSpace(projectId))
-            {
-                throw new System.ArgumentException($"{nameof(projectId)} was null or whitespace.");
-            }
-            return await Context.ProjectUsers.AnyAsync(_ => _.ProjectId == Guid.Parse(projectId) && _.Email == email);
+
+            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.Email == email);
         }
 
-        public async Task<bool> IsUserIdAuthorizedForProject(string userId, string projectId)
+        public async Task<bool> IsUserIdAuthorizedForProject(string userId, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
                 throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
             }
-            if (string.IsNullOrWhiteSpace(projectId))
-            {
-                throw new System.ArgumentException($"{nameof(projectId)} was null or whitespace.");
-            }
-            return await Context.ProjectUsers.AnyAsync(_ => _.ProjectId == Guid.Parse(projectId) && _.UserId == userId);
+
+            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.UserId == userId);
         }
 
-        public async Task<IEnumerable<string>> AddUserToProjects(string userId, string email, IEnumerable<string> projectIds, string commandingUserEmail)
+        public async Task<IEnumerable<Guid>> AddUserToProjects(string userId, string email, IEnumerable<Guid> projectIds, string commandingUserEmail)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
@@ -89,7 +85,7 @@ namespace Ranger.Services.Projects.Data
             }
 
             var projectUsersToAdd = new List<ProjectUser>();
-            var invalidProjects = new List<string>();
+            var invalidProjects = new List<Guid>();
             foreach (var projectId in projectIds)
             {
                 try
@@ -97,7 +93,7 @@ namespace Ranger.Services.Projects.Data
                     var projectUser = new ProjectUser
                     {
                         DatabaseUsername = this.contextTenant.DatabaseUsername,
-                        ProjectId = Guid.Parse(projectId),
+                        ProjectId = projectId,
                         UserId = userId,
                         Email = email,
                         InsertedAt = DateTime.UtcNow,
@@ -113,12 +109,12 @@ namespace Ranger.Services.Projects.Data
 
             }
 
-            Context.ProjectUsers.AddRange(projectUsersToAdd);
-            await Context.SaveChangesAsync();
+            this.context.ProjectUsers.AddRange(projectUsersToAdd);
+            await this.context.SaveChangesAsync();
             return invalidProjects;
         }
 
-        public async Task<IEnumerable<string>> RemoveUserFromProjects(string userId, IEnumerable<string> projectIds, string commandingUserEmail)
+        public async Task<IEnumerable<Guid>> RemoveUserFromProjects(string userId, IEnumerable<Guid> projectIds, string commandingUserEmail)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
@@ -138,12 +134,12 @@ namespace Ranger.Services.Projects.Data
             }
 
             var guidProjectIds = new List<Guid>();
-            var invalidProjects = new List<string>();
+            var invalidProjects = new List<Guid>();
             foreach (var projectId in projectIds)
             {
                 try
                 {
-                    guidProjectIds.Add(Guid.Parse(projectId));
+                    guidProjectIds.Add(projectId);
                 }
                 catch (FormatException ex)
                 {
@@ -151,8 +147,8 @@ namespace Ranger.Services.Projects.Data
                     invalidProjects.Add(projectId);
                 }
             }
-            Context.ProjectUsers.RemoveRange(await Context.ProjectUsers.Where(_ => _.UserId == userId && guidProjectIds.Contains(_.ProjectId)).ToListAsync());
-            await Context.SaveChangesAsync();
+            this.context.ProjectUsers.RemoveRange(await this.context.ProjectUsers.Where(_ => _.UserId == userId && guidProjectIds.Contains(_.ProjectId)).ToListAsync());
+            await this.context.SaveChangesAsync();
             return invalidProjects;
         }
     }

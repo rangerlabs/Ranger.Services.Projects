@@ -19,17 +19,17 @@ namespace Ranger.Services.Projects
     public class ProjectController : ControllerBase
     {
         private readonly ITenantsClient tenantsClient;
-        private readonly ProjectsRepository.Factory projectsRepositoryFactory;
+        private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
-        private readonly ProjectUsersRepository.Factory projectUsersRepositoryFactory;
+        private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
         private readonly IIdentityClient identityClient;
 
-        public ProjectController(ITenantsClient tenantsClient, IIdentityClient identityClient, ProjectsRepository.Factory projectsRepositoryFactory, ProjectUsersRepository.Factory projectUsersRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(ITenantsClient tenantsClient, IIdentityClient identityClient, Func<string, ProjectsRepository> projectsRepositoryFactory, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<ProjectController> logger)
         {
-            this.identityClient = identityClient;
-            this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this.tenantsClient = tenantsClient;
+            this.identityClient = identityClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
+            this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this.logger = logger;
         }
 
@@ -43,26 +43,18 @@ namespace Ranger.Services.Projects
                 return BadRequest(apiErrorContent);
             }
 
-            ContextTenant tenant = null;
+            IProjectUsersRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectUsersRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            var repo = projectUsersRepositoryFactory.Invoke(tenant);
-            IEnumerable<string> projectIds = new List<string>();
+
+            IEnumerable<Guid> projectIds = new List<Guid>();
             try
             {
                 projectIds = await repo.GetAuthorizedProjectIdsForUserEmail(email);
@@ -77,25 +69,16 @@ namespace Ranger.Services.Projects
         [HttpGet("{domain}/project")]
         public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery] string apiKey)
         {
-            ContextTenant tenant = null;
+            IProjectsRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectsRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            var repo = projectsRepositoryFactory.Invoke(tenant);
             var project = await repo.GetProjectByApiKeyAsync(apiKey);
             if (project is null)
             {
@@ -110,21 +93,13 @@ namespace Ranger.Services.Projects
         [HttpGet("{domain}/project/{email}")]
         public async Task<IActionResult> GetProjects([FromRoute] string domain, [FromRoute] string email)
         {
-            ContextTenant tenant = null;
+            IProjectsRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectsRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
@@ -146,7 +121,6 @@ namespace Ranger.Services.Projects
                 }
             }
 
-            var repo = projectsRepositoryFactory.Invoke(tenant);
             IEnumerable<(Project project, int version)> projects;
             if (role == RolesEnum.User)
             {
@@ -171,44 +145,27 @@ namespace Ranger.Services.Projects
         }
 
         [HttpPut("{domain}/project/{projectId}/{environment}/reset")]
-        public async Task<IActionResult> ApiKeyReset([FromRoute] string domain, [FromRoute] string projectId, [FromRoute] string environment, ApiKeyResetModel apiKeyResetModel)
+        public async Task<IActionResult> ApiKeyReset([FromRoute] string domain, [FromRoute] Guid projectId, [FromRoute] string environment, ApiKeyResetModel apiKeyResetModel)
         {
-            Guid projectIdGuid;
-            if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid))
-            {
-                var invalidProjectIdErrors = new ApiErrorContent();
-                invalidProjectIdErrors.Errors.Add("Invalid project id format.");
-                return BadRequest(invalidProjectIdErrors);
-            }
+
             if (environment == "live" || environment == "test")
             {
-                ContextTenant tenant = null;
+                IProjectsRepository repo;
                 try
                 {
-                    tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                    repo = projectsRepositoryFactory.Invoke(domain);
                 }
-                catch (HttpClientException ex)
+                catch (Exception)
                 {
-                    if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                    {
-                        var noTenantFoundErrors = new ApiErrorContent();
-                        noTenantFoundErrors.Errors.Add($"No tenant was foud for domain '{domain}'.");
-                        return NotFound(noTenantFoundErrors);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                     return StatusCode(StatusCodes.Status500InternalServerError);
                 }
 
-                var repo = projectsRepositoryFactory.Invoke(tenant);
                 try
                 {
                     var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
                     return Ok(new ProjectResponseModel
                     {
-                        ProjectId = project.ProjectId.ToString(),
+                        ProjectId = project.ProjectId,
                         Name = project.Name,
                         Description = project.Description,
                         LiveApiKey = environment == "live" ? newApiKey : "",
@@ -239,37 +196,18 @@ namespace Ranger.Services.Projects
         }
 
         [HttpPut("{domain}/project/{projectId}")]
-        public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] string projectId, PutProjectModel projectModel)
+        public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] Guid projectId, PutProjectModel projectModel)
         {
-            Guid projectIdGuid;
-            if (string.IsNullOrWhiteSpace(projectId) || !Guid.TryParse(projectId, out projectIdGuid))
-            {
-                var invalidProjectIdErrors = new ApiErrorContent();
-                invalidProjectIdErrors.Errors.Add("Invalid project id format.");
-                return BadRequest(invalidProjectIdErrors);
-            }
-
-            ContextTenant tenant = null;
+            IProjectsRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectsRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    var errors = new ApiErrorContent();
-                    errors.Errors.Add($"No tenant was foud for domain '{domain}'.");
-                    return NotFound(errors);
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            var repo = projectsRepositoryFactory.Invoke(tenant);
             var project = await repo.GetProjectByProjectIdAsync(projectId);
             if (project is null)
             {
@@ -287,7 +225,7 @@ namespace Ranger.Services.Projects
                     projectModel.Version,
                     new Project
                     {
-                        ProjectId = projectIdGuid,
+                        ProjectId = projectId,
                         Name = projectModel.Name,
                         Description = projectModel.Description,
                         Enabled = projectModel.Enabled,
@@ -320,7 +258,7 @@ namespace Ranger.Services.Projects
             }
             return Ok(new ProjectResponseModel
             {
-                ProjectId = updatedProject.ProjectId.ToString(),
+                ProjectId = updatedProject.ProjectId,
                 Name = updatedProject.Name,
                 Description = updatedProject.Description,
                 Enabled = updatedProject.Enabled,
@@ -331,27 +269,18 @@ namespace Ranger.Services.Projects
         }
 
         [HttpDelete("{domain}/project/{projectId}")]
-        public async Task<IActionResult> SoftDeleteProject([FromRoute] string domain, [FromRoute] string projectId, [FromBody] SoftDeleteModel softDeleteModel)
+        public async Task<IActionResult> SoftDeleteProject([FromRoute] string domain, [FromRoute] Guid projectId, [FromBody] SoftDeleteModel softDeleteModel)
         {
-            ContextTenant tenant = null;
+            IProjectsRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectsRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound(ex.ApiResponse.Errors);
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            var repo = projectsRepositoryFactory.Invoke(tenant);
             try
             {
                 await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
@@ -367,29 +296,20 @@ namespace Ranger.Services.Projects
         [HttpPost("{domain}/project")]
         public async Task<IActionResult> PostProject([FromRoute] string domain, PostProjectModel projectModel)
         {
-            ContextTenant tenant = null;
+            IProjectsRepository repo;
             try
             {
-                tenant = await this.tenantsClient.GetTenantAsync<ContextTenant>(domain);
+                repo = projectsRepositoryFactory.Invoke(domain);
             }
-            catch (HttpClientException ex)
+            catch (Exception)
             {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
-                {
-                    return NotFound(ex.ApiResponse.Errors);
-                }
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            var repo = projectsRepositoryFactory.Invoke(tenant);
             return await AddNewProject(domain, projectModel, repo);
         }
 
-        private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, ProjectsRepository repo)
+        private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
         {
             string liveApiKeyGuid;
             string testApiKeyGuid;
@@ -471,7 +391,7 @@ namespace Ranger.Services.Projects
 
             return Ok(new ProjectResponseModel
             {
-                ProjectId = project.ProjectId.ToString(),
+                ProjectId = project.ProjectId,
                 Name = project.Name,
                 Description = project.Description,
                 LiveApiKey = liveApiKeyGuid,
