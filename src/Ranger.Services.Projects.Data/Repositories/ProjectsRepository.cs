@@ -288,6 +288,7 @@ namespace Ranger.Services.Projects.Data
                 var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
                 currentProject.Deleted = true;
 
+                //Make 3 attempts to delete the project in the case that updates were made before the delete request was submitted.
                 var deleted = false;
                 var maxConcurrencyAttempts = 3;
                 while (!deleted && maxConcurrencyAttempts != 0)

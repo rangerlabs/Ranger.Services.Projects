@@ -11,8 +11,8 @@ namespace Ranger.Services.Projects.Data
         public string HashedTestApiKey { get; set; }
         public string LiveApiKeyPrefix { get; set; }
         public string TestApiKeyPrefix { get; set; }
-        public bool Enabled { get; set; } = true;
         public string Description { get; set; }
+        public bool Enabled { get; set; } = true;
         public bool Deleted { get; set; } = false;
     }
 }
