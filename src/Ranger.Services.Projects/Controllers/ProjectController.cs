@@ -284,13 +284,13 @@ namespace Ranger.Services.Projects
             try
             {
                 await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
-                return NoContent();
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Failed to delete project stream.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
+            return NoContent();
         }
 
         [HttpPost("{domain}/project")]
@@ -307,6 +307,7 @@ namespace Ranger.Services.Projects
             }
 
             return await AddNewProject(domain, projectModel, repo);
+
         }
 
         private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
