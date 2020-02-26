@@ -372,7 +372,7 @@ namespace Ranger.Services.Projects.Data
             ValidateDataJsonInequality(currentProjectStream, serializedNewProjectData);
 
             var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.ProjectId);
-            uniqueConstraint.Name = project.Name;
+            uniqueConstraint.Name = project.Name.ToLowerInvariant();
             uniqueConstraint.HashedLiveApiKey = project.HashedLiveApiKey;
             uniqueConstraint.HashedTestApiKey = project.HashedTestApiKey;
 
@@ -422,7 +422,12 @@ namespace Ranger.Services.Projects.Data
 
         private async Task<ProjectStream> GetProjectStreamByProjectNameAsync(string name)
         {
-            return await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstOrDefaultAsync();
+            var projectId = (await this.context.ProjectUniqueConstraints.Where(_ => _.Name == name.ToLowerInvariant()).SingleOrDefaultAsync())?.ProjectId;
+            if (projectId is null)
+            {
+                return null;
+            }
+            return await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'Name' = {projectId.ToString()} ORDER BY version DESC").FirstOrDefaultAsync();
         }
 
         private static void ValidateDataJsonInequality(ProjectStream currentProjectStream, string serializedNewProjectData)
@@ -463,7 +468,7 @@ namespace Ranger.Services.Projects.Data
             {
                 ProjectId = project.ProjectId,
                 DatabaseUsername = contextTenant.DatabaseUsername,
-                Name = project.Name,
+                Name = project.Name.ToLowerInvariant(),
                 HashedLiveApiKey = project.HashedLiveApiKey,
                 HashedTestApiKey = project.HashedTestApiKey
             };
