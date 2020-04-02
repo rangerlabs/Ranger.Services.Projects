@@ -18,14 +18,16 @@ namespace Ranger.Services.Projects
     [ApiController]
     public class ProjectController : ControllerBase
     {
+        private readonly IBusPublisher busPublisher;
         private readonly ITenantsClient tenantsClient;
         private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
         private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
         private readonly IIdentityClient identityClient;
 
-        public ProjectController(ITenantsClient tenantsClient, IIdentityClient identityClient, Func<string, ProjectsRepository> projectsRepositoryFactory, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(IBusPublisher busPublisher, ITenantsClient tenantsClient, IIdentityClient identityClient, Func<string, ProjectsRepository> projectsRepositoryFactory, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<ProjectController> logger)
         {
+            this.busPublisher = busPublisher;
             this.tenantsClient = tenantsClient;
             this.identityClient = identityClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
@@ -290,6 +292,7 @@ namespace Ranger.Services.Projects
                 logger.LogError(ex, "Failed to delete project stream.");
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
+            busPublisher.Send(new DecrementResourceCount(domain, ResourceEnum.Project), CorrelationContext.Empty);
             return NoContent();
         }
 
