@@ -16,7 +16,7 @@ namespace Ranger.Services.Projects.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.0")
+                .HasAnnotation("ProductVersion", "3.1.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -54,11 +54,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasColumnName("data")
                         .HasColumnType("jsonb");
 
-                    b.Property<string>("DatabaseUsername")
-                        .IsRequired()
-                        .HasColumnName("database_username")
-                        .HasColumnType("text");
-
                     b.Property<string>("Event")
                         .IsRequired()
                         .HasColumnName("event")
@@ -77,6 +72,12 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasColumnName("stream_id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnName("tenant_id")
+                        .HasColumnType("character varying(36)")
+                        .HasMaxLength(36);
+
                     b.Property<int>("Version")
                         .HasColumnName("version")
                         .HasColumnType("integer");
@@ -92,11 +93,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnName("project_id")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("DatabaseUsername")
-                        .IsRequired()
-                        .HasColumnName("database_username")
-                        .HasColumnType("text");
 
                     b.Property<string>("HashedLiveApiKey")
                         .IsRequired()
@@ -114,16 +110,22 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasColumnType("character varying(140)")
                         .HasMaxLength(140);
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnName("tenant_id")
+                        .HasColumnType("character varying(36)")
+                        .HasMaxLength(36);
+
                     b.HasKey("ProjectId")
                         .HasName("pk_project_unique_constraints");
 
-                    b.HasIndex("DatabaseUsername", "HashedLiveApiKey")
+                    b.HasIndex("TenantId", "HashedLiveApiKey")
                         .IsUnique();
 
-                    b.HasIndex("DatabaseUsername", "HashedTestApiKey")
+                    b.HasIndex("TenantId", "HashedTestApiKey")
                         .IsUnique();
 
-                    b.HasIndex("DatabaseUsername", "Name")
+                    b.HasIndex("TenantId", "Name")
                         .IsUnique();
 
                     b.ToTable("project_unique_constraints");
@@ -136,11 +138,6 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasColumnName("id")
                         .HasColumnType("integer")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
-
-                    b.Property<string>("DatabaseUsername")
-                        .IsRequired()
-                        .HasColumnName("database_username")
-                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -159,6 +156,11 @@ namespace Ranger.Services.Projects.Data.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnName("project_id")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnName("tenant_id")
+                        .HasColumnType("text");
 
                     b.Property<string>("UserId")
                         .IsRequired()

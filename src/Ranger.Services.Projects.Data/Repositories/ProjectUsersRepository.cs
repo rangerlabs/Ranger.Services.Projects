@@ -92,7 +92,7 @@ namespace Ranger.Services.Projects.Data
                 {
                     var projectUser = new ProjectUser
                     {
-                        DatabaseUsername = this.contextTenant.DatabaseUsername,
+                        TenantId = this.contextTenant.TenantId,
                         ProjectId = projectId,
                         UserId = userId,
                         Email = email,

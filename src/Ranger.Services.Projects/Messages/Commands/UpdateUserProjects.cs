@@ -8,17 +8,17 @@ namespace Ranger.Services.Projects
     [MessageNamespace("projects")]
     public class UpdateUserProjects : ICommand
     {
-        public string Domain { get; }
+        public string TenantId { get; }
         public string Email { get; }
         public string CommandingUserEmail { get; }
         public string UserId { get; }
         public readonly IEnumerable<Guid> ProjectIds;
 
-        public UpdateUserProjects(string domain, IEnumerable<Guid> projectIds, string userId, string email, string commandingUserEmail)
+        public UpdateUserProjects(string tenantId, IEnumerable<Guid> projectIds, string userId, string email, string commandingUserEmail)
         {
-            if (string.IsNullOrWhiteSpace(domain))
+            if (string.IsNullOrWhiteSpace(tenantId))
             {
-                throw new ArgumentException($"{nameof(domain)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(tenantId)} was null or whitespace.");
             }
             if (string.IsNullOrWhiteSpace(userId))
             {
@@ -36,7 +36,7 @@ namespace Ranger.Services.Projects
             {
                 throw new ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace.");
             }
-            this.Domain = domain;
+            this.TenantId = tenantId;
             this.ProjectIds = projectIds;
             this.UserId = userId;
             this.Email = email;

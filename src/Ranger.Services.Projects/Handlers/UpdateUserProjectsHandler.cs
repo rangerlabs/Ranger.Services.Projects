@@ -16,11 +16,9 @@ namespace Ranger.Services.Projects
         private readonly IBusPublisher busPublisher;
         private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
         private readonly ILogger<UpdateUserProjectsHandler> logger;
-        private readonly ITenantsClient tenantsClient;
 
-        public UpdateUserProjectsHandler(IBusPublisher busPublisher, ITenantsClient tenantsClient, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<UpdateUserProjectsHandler> logger)
+        public UpdateUserProjectsHandler(IBusPublisher busPublisher, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<UpdateUserProjectsHandler> logger)
         {
-            this.tenantsClient = tenantsClient;
             this.busPublisher = busPublisher;
             this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this.logger = logger;
@@ -31,7 +29,7 @@ namespace Ranger.Services.Projects
         // still not enough but enough for now
         public async Task HandleAsync(UpdateUserProjects command, ICorrelationContext context)
         {
-            var projectUsersRepository = projectUsersRepositoryFactory(command.Domain);
+            var projectUsersRepository = projectUsersRepositoryFactory(command.TenantId);
             var currentlyAuthorizedProjectIds = await projectUsersRepository.GetAuthorizedProjectIdsForUserEmail(command.Email);
 
             var distinctNewProjectIds = command.ProjectIds.Distinct();

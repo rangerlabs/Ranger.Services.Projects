@@ -13,7 +13,7 @@ namespace Ranger.Services.Projects
         public Guid ProjectId { get; set; }
 
         [Required]
-        public string DatabaseUsername { get; set; }
+        public string TenantId { get; set; }
 
         [Required]
         public string UserId { get; set; }

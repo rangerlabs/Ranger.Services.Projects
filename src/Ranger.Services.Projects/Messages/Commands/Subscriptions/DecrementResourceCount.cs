@@ -8,16 +8,16 @@ namespace Ranger.Services.Projects
     [MessageNamespace("subscriptions")]
     public class DecrementResourceCount : ICommand
     {
-        public string Domain { get; }
+        public string TenantId { get; }
         public ResourceEnum Resource { get; }
 
-        public DecrementResourceCount(string domain, ResourceEnum resource)
+        public DecrementResourceCount(string tenantId, ResourceEnum resource)
         {
-            if (String.IsNullOrWhiteSpace(domain))
+            if (String.IsNullOrWhiteSpace(tenantId))
             {
-                throw new ArgumentException($"{nameof(domain)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(tenantId)} was null or whitespace.");
             }
-            this.Domain = domain;
+            this.TenantId = tenantId;
             this.Resource = resource;
         }
     }

@@ -14,7 +14,8 @@ namespace Ranger.Services.Projects.Data
         public Guid ProjectId { get; set; }
 
         [Required]
-        public string DatabaseUsername { get; set; }
+        [StringLength(36)]
+        public string TenantId { get; set; }
 
         [Required]
         public string HashedLiveApiKey { get; set; }
