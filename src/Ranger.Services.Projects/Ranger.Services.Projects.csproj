@@ -32,7 +32,7 @@
     <PackageReference Include="Ranger.Monitoring" Version="2.1.0" />
     <PackageReference Include="Ranger.RabbitMQ" version="2.2.2" />
     <PackageReference Include="Ranger.ApiUtilities" Version="3.2.9" />
-    <PackageReference Include="Ranger.InternalHttpClient" Version="4.1.6" />
+    <PackageReference Include="Ranger.InternalHttpClient" Version="4.2.2" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ranger.Services.Projects.Data\Ranger.Services.Projects.Data.csproj" />

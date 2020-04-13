@@ -55,9 +55,9 @@ namespace Ranger.Services.Projects
                 var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
                 if (String.IsNullOrWhiteSpace(tenantId))
                 {
-                    return new ApiResponse("No tenant was found for the provided API key", statusCode: StatusCodes.Status404NotFound);
+                    throw new ApiException("No tenant was found for the provided API key", statusCode: StatusCodes.Status404NotFound);
                 }
-                return new ApiResponse(tenantId);
+                return new ApiResponse("Successfully retrieved tenant id", tenantId);
             }
 
             return new ApiResponse("The API key does not have a valid prefix", statusCode: StatusCodes.Status400BadRequest);
@@ -66,8 +66,8 @@ namespace Ranger.Services.Projects
         ///<summary>
         /// Gets the project unique identifiers a user is permitted to access
         ///</summary>
-        ///<param name="tenantId">The tenant id the user is associated with<param>
-        ///<param name="email">The user's email address<param>
+        ///<param name="tenantId">The tenant id the user is associated with</param>
+        ///<param name="email">The user's email address</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [HttpGet("/projects/{tenantId}/authorized/{email}")]
         public async Task<ApiResponse> GetProjectIdsForUser(string tenantId, [FromRoute] string email)
@@ -85,14 +85,14 @@ namespace Ranger.Services.Projects
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
-            return new ApiResponse("Success", projectIds);
+            return new ApiResponse("Successfully retrieved project ids", projectIds);
         }
 
         ///<summary>
         /// Gets a project by the API key
         ///</summary>
-        ///<param name="tenantId">The tenant id the user is associated with<param>
-        ///<param name="email">The user's email address<param>
+        ///<param name="tenantId">The tenant id the user is associated with</param>
+        ///<param name="apiKey">The api key</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [HttpGet("/projects/{tenantId}/{apiKey")]
         public async Task<ApiResponse> GetProjectByApiKey(string tenantId, string apiKey)
@@ -107,21 +107,21 @@ namespace Ranger.Services.Projects
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
             var result = new { ProjectId = project.ProjectId, Enabled = project.Enabled, Name = project.Name };
-            return new ApiResponse("Success", result);
+            return new ApiResponse("Successfully retrieved project", result);
         }
 
         ///<summary>
         /// Gets the projects a user is permitted to access
         ///</summary>
-        ///<param name="tenantId">The tenant id the user is associated with<param>
-        ///<param name="email">The user's email address<param>
+        ///<param name="tenantId">The tenant id the user is associated with</param>
+        ///<param name="email">The user's email address</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [HttpGet("/projects/{tenantId}/{email}")]
         public async Task<ApiResponse> GetAllProjectsForUser(string tenantId, string email)
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            ApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email);
+            RangerApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email);
             if (!apiResponse.IsError)
             {
                 var role = Enum.Parse<RolesEnum>(apiResponse.Result);
@@ -155,7 +155,7 @@ namespace Ranger.Services.Projects
                                        TestApiKeyPrefix = _.project.TestApiKeyPrefix,
                                        Version = _.version
                                    });
-                return new ApiResponse("Success", result);
+                return new ApiResponse("Successfully retrieved all projects for user", result);
             }
             throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error, statusCode: apiResponse.StatusCode);
         }
@@ -163,10 +163,10 @@ namespace Ranger.Services.Projects
         ///<summary>
         /// Resets the API key for a given environment
         ///</summary>
-        ///<param name="tenantId">The tenant id the project API key is associated with<param>
-        ///<param name="projectId">The project id for the API key to reset<param>
-        ///<param name="environment">The environment for the API key to reset - "live" or "test"<param>
-        ///<param name="apiKeyResetModel">The model necessary to verify the key reset<param>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="environment">The environment for the API key to reset - "live" or "test"</param>
+        ///<param name="apiKeyResetModel">The model necessary to verify the key reset</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -181,7 +181,7 @@ namespace Ranger.Services.Projects
                 try
                 {
                     var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
-                    return new ApiResponse("Success", new ProjectResponseModel
+                    return new ApiResponse("Successfully reset api key", new ProjectResponseModel
                     {
                         ProjectId = project.ProjectId,
                         Name = project.Name,
@@ -206,22 +206,23 @@ namespace Ranger.Services.Projects
                 }
                 catch (Exception ex)
                 {
-                    var _ = "Failed to save project stream";
+                    var _ = "Failed to update project";
                     logger.LogError(ex, _);
                     throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
 
             var message = "Invalid environment name. Expected either 'live' or 'test'";
-            return new ApiResponse(message, statusCode: StatusCodes.Status400BadRequest);
+            logger.LogDebug(message);
+            throw new ApiException(message, statusCode: StatusCodes.Status400BadRequest);
         }
 
         ///<summary>
-        /// Updates and existing project
+        /// Updates an existing project
         ///</summary>
-        ///<param name="tenantId">The tenant id the project API key is associated with<param>
-        ///<param name="projectId">The project id for the API key to reset<param>
-        ///<param name="projectModel">The model necessary to update a project<param>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="projectModel">The model necessary to update a project</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status304NotModified)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -267,12 +268,12 @@ namespace Ranger.Services.Projects
             catch (NoOpException ex)
             {
                 logger.LogInformation(ex.Message);
-                return new ApiResponse(ex.Message, statusCode: StatusCodes.Status304NotModified);
+                throw new ApiException(ex.Message, statusCode: StatusCodes.Status304NotModified);
             }
             catch (RangerException ex)
             {
                 logger.LogInformation(ex.Message);
-                return new ApiResponse(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+                throw new ApiException(ex.Message, statusCode: StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
             {
@@ -280,7 +281,7 @@ namespace Ranger.Services.Projects
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
-            return new ApiResponse("Success", new ProjectResponseModel
+            return new ApiResponse("Successfully updated project", new ProjectResponseModel
             {
                 ProjectId = updatedProject.ProjectId,
                 Name = updatedProject.Name,
@@ -295,9 +296,9 @@ namespace Ranger.Services.Projects
         ///<summary>
         /// Updates and existing project
         ///</summary>
-        ///<param name="tenantId">The tenant id the project API key is associated with<param>
-        ///<param name="projectId">The project id for the API key to reset<param>
-        ///<param name="softDeleteModel">The model necessary to delete a project<param>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="softDeleteModel">The model necessary to delete a project</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -320,7 +321,7 @@ namespace Ranger.Services.Projects
                 catch (RangerException ex)
                 {
                     logger.LogInformation(ex.Message);
-                    return new ApiResponse(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+                    throw new ApiException(ex.Message, statusCode: StatusCodes.Status400BadRequest);
                 }
                 catch (Exception ex)
                 {
@@ -328,7 +329,7 @@ namespace Ranger.Services.Projects
                     logger.LogError(ex, message);
                     throw new ApiException(message, StatusCodes.Status500InternalServerError);
                 }
-                return new ApiResponse("Success");
+                return new ApiResponse("Successfully deleted project");
             }
             throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error, statusCode: apiResponse.StatusCode);
         }
@@ -336,9 +337,8 @@ namespace Ranger.Services.Projects
         ///<summary>
         /// Creates a new project
         ///</summary>
-        ///<param name="tenantId">The tenant id the project API key is associated with<param>
-        ///<param name="projectId">The project id for the API key to reset<param>
-        ///<param name="projectModel">The model necessary to create a project<param>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectModel">The model necessary to create a project</param>
         [ProducesResponseType(StatusCodes.Status201Created)]
         [HttpPost("/projects/{tenantId}")]
         public async Task<ApiResponse> PostProject(string tenantId, PostProjectModel projectModel)
@@ -432,7 +432,7 @@ namespace Ranger.Services.Projects
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
 
-            return new ApiResponse("Success", new ProjectResponseModel
+            return new ApiResponse("Successfully created new project", new ProjectResponseModel
             {
                 ProjectId = project.ProjectId,
                 Name = project.Name,
