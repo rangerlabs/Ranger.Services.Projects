@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Ranger.Common;
 
 namespace Ranger.Services.Projects.Data
 {
@@ -14,6 +15,6 @@ namespace Ranger.Services.Projects.Data
         Task<Project> GetProjectByProjectIdAsync(Guid projectId);
         Task<Project> GetProjectByApiKeyAsync(string apiKey);
         Task<Project> UpdateProjectAsync(string userEmail, string eventName, int version, Project project);
-        Task<(Project, string)> UpdateApiKeyAsync(string userEmail, string environment, int version, Guid projectId);
+        Task<(Project, string)> UpdateApiKeyAsync(string userEmail, EnvironmentEnum environment, int version, Guid projectId);
     }
 }

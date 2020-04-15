@@ -9,7 +9,7 @@ namespace Ranger.Services.Projects.Data.Migrations
             //https://www.postgresql.org/docs/9.6/datatype-json.html
             //https://dba.stackexchange.com/questions/161313/creating-a-unique-constraint-from-a-json-object
             migrationBuilder.Sql("CREATE UNIQUE INDEX idx_data_projectid_version ON project_streams (tenant_id, (data->>'ProjectId'), version);");
-            migrationBuilder.Sql("CREATE INDEX idx_data_name ON project_streams (database_username, (data->>'Name'));");
+            migrationBuilder.Sql("CREATE INDEX idx_data_name ON project_streams (tenant_id, (data->>'Name'));");
             migrationBuilder.Sql("CREATE INDEX idx_data_hashedliveapikey ON project_streams (tenant_id, (data->>'HashedLiveApiKey'));");
             migrationBuilder.Sql("CREATE INDEX idx_data_hashedtestapikey ON project_streams (tenant_id, (data->>'HashedTestApiKey'));");
         }

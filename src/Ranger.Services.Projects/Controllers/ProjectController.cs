@@ -157,7 +157,7 @@ namespace Ranger.Services.Projects
                                    });
                 return new ApiResponse("Successfully retrieved all projects for user", result);
             }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error, statusCode: apiResponse.StatusCode);
+            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
         }
 
         ///<summary>
@@ -171,50 +171,43 @@ namespace Ranger.Services.Projects
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [HttpPut("/projects/{tenantId}/{projectId}/{environment}/reset")]
-        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, string environment, ApiKeyResetModel apiKeyResetModel)
+        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, EnvironmentEnum environment, ApiKeyResetModel apiKeyResetModel)
         {
+            var repo = projectsRepositoryFactory(tenantId);
 
-            if (environment == "live" || environment == "test")
+            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
+            try
             {
-                var repo = projectsRepositoryFactory(tenantId);
-
-                try
+                var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
+                return new ApiResponse("Successfully reset api key", new ProjectResponseModel
                 {
-                    var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
-                    return new ApiResponse("Successfully reset api key", new ProjectResponseModel
-                    {
-                        ProjectId = project.ProjectId,
-                        Name = project.Name,
-                        Description = project.Description,
-                        LiveApiKey = environment == "live" ? newApiKey : "",
-                        TestApiKey = environment == "test" ? newApiKey : "",
-                        LiveApiKeyPrefix = project.LiveApiKeyPrefix,
-                        TestApiKeyPrefix = project.TestApiKeyPrefix,
-                        Enabled = project.Enabled,
-                        Version = apiKeyResetModel.Version
-                    });
-                }
-                catch (ConcurrencyException ex)
-                {
-                    logger.LogError(ex.Message);
-                    throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
-                }
-                catch (RangerException ex)
-                {
-                    logger.LogError(ex.Message);
-                    throw new ApiException(ex.Message, StatusCodes.Status400BadRequest);
-                }
-                catch (Exception ex)
-                {
-                    var _ = "Failed to update project";
-                    logger.LogError(ex, _);
-                    throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
-                }
+                    ProjectId = project.ProjectId,
+                    Name = project.Name,
+                    Description = project.Description,
+                    LiveApiKey = environmentString == "live" ? newApiKey : "",
+                    TestApiKey = environmentString == "test" ? newApiKey : "",
+                    LiveApiKeyPrefix = project.LiveApiKeyPrefix,
+                    TestApiKeyPrefix = project.TestApiKeyPrefix,
+                    Enabled = project.Enabled,
+                    Version = apiKeyResetModel.Version
+                });
             }
-
-            var message = "Invalid environment name. Expected either 'live' or 'test'";
-            logger.LogDebug(message);
-            throw new ApiException(message, statusCode: StatusCodes.Status400BadRequest);
+            catch (ConcurrencyException ex)
+            {
+                logger.LogError(ex.Message);
+                throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
+            }
+            catch (RangerException ex)
+            {
+                logger.LogError(ex.Message);
+                throw new ApiException(ex.Message, StatusCodes.Status400BadRequest);
+            }
+            catch (Exception ex)
+            {
+                var _ = "An error occurred resetting the API key";
+                logger.LogError(ex, _);
+                throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
+            }
         }
 
         ///<summary>
@@ -277,7 +270,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "Failed to save project stream";
+                var message = "An error occurred updating the project";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
@@ -325,13 +318,13 @@ namespace Ranger.Services.Projects
                 }
                 catch (Exception ex)
                 {
-                    var message = "Failed to delete project stream";
+                    var message = "An error occurred deleting the project";
                     logger.LogError(ex, message);
                     throw new ApiException(message, StatusCodes.Status500InternalServerError);
                 }
                 return new ApiResponse("Successfully deleted project");
             }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error, statusCode: apiResponse.StatusCode);
+            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
         }
 
         ///<summary>
@@ -350,7 +343,7 @@ namespace Ranger.Services.Projects
 
                 return await AddNewProject(tenantId, projectModel, repo);
             }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error, statusCode: apiResponse.StatusCode);
+            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
         }
 
         private async Task<ApiResponse> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
@@ -427,7 +420,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "Failed to create project stream";
+                var message = "An error occurred creating the project";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }

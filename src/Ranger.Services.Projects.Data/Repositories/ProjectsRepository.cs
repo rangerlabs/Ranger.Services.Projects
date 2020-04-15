@@ -81,7 +81,7 @@ namespace Ranger.Services.Projects.Data
                 WITH not_deleted AS(
 	                SELECT 
 	                	ps.id,
-	                	ps.database_username,
+	                	ps.tenant_id,
 	                	ps.stream_id,
 	                	ps.version,
 	                	ps.data,
@@ -93,7 +93,7 @@ namespace Ranger.Services.Projects.Data
                 )
                 SELECT DISTINCT ON (ps.stream_id)
                 	ps.id,
-                	ps.database_username,
+                	ps.tenant_id,
                 	ps.stream_id,
                 	ps.version,
                 	ps.data,
@@ -119,7 +119,7 @@ namespace Ranger.Services.Projects.Data
                 WITH not_deleted AS(
 	                SELECT 
             	    	ps.id,
-            	    	ps.database_username,
+            	    	ps.tenant_id,
             	    	ps.stream_id,
             	    	ps.version,
             	    	ps.data,
@@ -131,7 +131,7 @@ namespace Ranger.Services.Projects.Data
                )
                SELECT DISTINCT ON (ps.stream_id) 
               		ps.id,
-              		ps.database_username,
+              		ps.tenant_id,
               		ps.stream_id,
               		ps.version,
             		ps.data,
@@ -192,94 +192,87 @@ namespace Ranger.Services.Projects.Data
             );
         }
 
-        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, string environment, int version, Guid projectId)
+        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, EnvironmentEnum environment, int version, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
                 throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
             }
-            if (string.IsNullOrWhiteSpace(environment))
-            {
-                throw new ArgumentException($"{nameof(environment)} was null or whitespace.");
-            }
 
-            if (environment != "live" || environment != "test")
+            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
+            var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
+            if (!(currentProjectStream is null))
             {
-                var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
-                if (!(currentProjectStream is null))
+                ValidateRequestVersionIncremented(version, currentProjectStream);
+
+                var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
+                var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.ProjectId);
+                var newApiKeyGuid = Guid.NewGuid().ToString();
+                string resultKey = "";
+
+                if (environmentString == "live")
                 {
-                    ValidateRequestVersionIncremented(version, currentProjectStream);
-
-                    var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
-                    var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.ProjectId);
-                    var newApiKeyGuid = Guid.NewGuid().ToString();
-                    string resultKey = "";
-
-                    if (environment == "live")
-                    {
-                        resultKey = "live." + newApiKeyGuid;
-                        var newApiKeyPrefix = "live." + newApiKeyGuid.Substring(0, 6);
-                        var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
-                        currentProject.LiveApiKeyPrefix = newApiKeyPrefix;
-                        currentProject.HashedLiveApiKey = hashedApiKeyGuid;
-                        uniqueConstraint.HashedLiveApiKey = hashedApiKeyGuid;
-                    }
-                    else
-                    {
-                        resultKey = "test." + newApiKeyGuid;
-                        var newApiKeyPrefix = "test." + newApiKeyGuid.Substring(0, 6);
-                        var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
-                        currentProject.TestApiKeyPrefix = newApiKeyPrefix;
-                        currentProject.HashedTestApiKey = hashedApiKeyGuid;
-                        uniqueConstraint.HashedTestApiKey = hashedApiKeyGuid;
-                    }
-
-                    var updatedProjectStream = new ProjectStream()
-                    {
-                        TenantId = this.contextTenant.TenantId,
-                        StreamId = currentProjectStream.StreamId,
-                        Version = version,
-                        Data = JsonConvert.SerializeObject(currentProject),
-                        Event = "ApiKeyReset",
-                        InsertedAt = DateTime.UtcNow,
-                        InsertedBy = userEmail,
-                    };
-
-                    this.context.Update(uniqueConstraint);
-                    this.context.ProjectStreams.Add(updatedProjectStream);
-                    try
-                    {
-                        await this.context.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException ex)
-                    {
-                        var postgresException = ex.InnerException as PostgresException;
-                        if (postgresException.SqlState == "23505")
-                        {
-                            var uniqueIndexViolation = postgresException.ConstraintName;
-                            switch (uniqueIndexViolation)
-                            {
-                                case ProjectJsonbConstraintNames.ProjectId_Version:
-                                    {
-                                        throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
-                                    }
-                                default:
-                                    {
-                                        throw new EventStreamDataConstraintException("");
-                                    }
-                            }
-                        }
-                        throw;
-                    }
-
-                    return (currentProject, resultKey);
+                    resultKey = "live." + newApiKeyGuid;
+                    var newApiKeyPrefix = "live." + newApiKeyGuid.Substring(0, 6);
+                    var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
+                    currentProject.LiveApiKeyPrefix = newApiKeyPrefix;
+                    currentProject.HashedLiveApiKey = hashedApiKeyGuid;
+                    uniqueConstraint.HashedLiveApiKey = hashedApiKeyGuid;
                 }
                 else
                 {
-                    throw new RangerException($"No project was found for project id '{projectId}'.");
+                    resultKey = "test." + newApiKeyGuid;
+                    var newApiKeyPrefix = "test." + newApiKeyGuid.Substring(0, 6);
+                    var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
+                    currentProject.TestApiKeyPrefix = newApiKeyPrefix;
+                    currentProject.HashedTestApiKey = hashedApiKeyGuid;
+                    uniqueConstraint.HashedTestApiKey = hashedApiKeyGuid;
                 }
+
+                var updatedProjectStream = new ProjectStream()
+                {
+                    TenantId = this.contextTenant.TenantId,
+                    StreamId = currentProjectStream.StreamId,
+                    Version = version,
+                    Data = JsonConvert.SerializeObject(currentProject),
+                    Event = "ApiKeyReset",
+                    InsertedAt = DateTime.UtcNow,
+                    InsertedBy = userEmail,
+                };
+
+                this.context.Update(uniqueConstraint);
+                this.context.ProjectStreams.Add(updatedProjectStream);
+                try
+                {
+                    await this.context.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    var postgresException = ex.InnerException as PostgresException;
+                    if (postgresException.SqlState == "23505")
+                    {
+                        var uniqueIndexViolation = postgresException.ConstraintName;
+                        switch (uniqueIndexViolation)
+                        {
+                            case ProjectJsonbConstraintNames.ProjectId_Version:
+                                {
+                                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                                }
+                            default:
+                                {
+                                    throw new EventStreamDataConstraintException("");
+                                }
+                        }
+                    }
+                    throw;
+                }
+
+                return (currentProject, resultKey);
             }
-            throw new ArgumentException($"'{environment}' is not a valid environment name. Expected 'live' or 'test'.");
+            else
+            {
+                throw new RangerException($"No project was found for project id '{projectId}'.");
+            }
         }
 
         public async Task SoftDeleteAsync(string userEmail, Guid projectId)
