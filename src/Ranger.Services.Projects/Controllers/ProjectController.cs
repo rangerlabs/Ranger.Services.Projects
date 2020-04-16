@@ -94,7 +94,7 @@ namespace Ranger.Services.Projects
         ///<param name="tenantId">The tenant id the user is associated with</param>
         ///<param name="apiKey">The api key</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [HttpGet("/projects/{tenantId}/{apiKey")]
+        [HttpGet("/projects/{tenantId}/{apiKey}")]
         public async Task<ApiResponse> GetProjectByApiKey(string tenantId, string apiKey)
         {
             var repo = projectsRepositoryFactory(tenantId);
