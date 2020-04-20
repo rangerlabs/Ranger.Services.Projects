@@ -26,18 +26,13 @@ namespace Ranger.Services.Projects
             where T : DbContext
         {
             var apiResponse = tenantsClient.GetTenantByIdAsync<ContextTenant>(tenantId).Result;
-            if (!apiResponse.IsError)
-            {
-                NpgsqlConnectionStringBuilder connectionBuilder = new NpgsqlConnectionStringBuilder(cloudSqlOptions.ConnectionString);
-                connectionBuilder.Username = tenantId;
-                connectionBuilder.Password = apiResponse.Result.DatabasePassword;
+            NpgsqlConnectionStringBuilder connectionBuilder = new NpgsqlConnectionStringBuilder(cloudSqlOptions.ConnectionString);
+            connectionBuilder.Username = tenantId;
+            connectionBuilder.Password = apiResponse.Result.DatabasePassword;
 
-                var options = new DbContextOptionsBuilder<T>();
-                options.UseNpgsql(connectionBuilder.ToString());
-                return (options.Options, apiResponse.Result);
-            }
-            this.logger.LogError("An exception occurred retrieving the ContextTenant object from the Tenants service. Cannot construct the tenant specific repository.");
-            throw new ApiException("Internal Server Error", StatusCodes.Status500InternalServerError);
+            var options = new DbContextOptionsBuilder<T>();
+            options.UseNpgsql(connectionBuilder.ToString());
+            return (options.Options, apiResponse.Result);
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using AutoWrapper.Wrappers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,8 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects
 {
     [ApiController]
+    [ApiVersion("1.0")]
+    [Authorize]
     public class ProjectController : ControllerBase
     {
         private readonly IBusPublisher busPublisher;
@@ -55,12 +58,11 @@ namespace Ranger.Services.Projects
                 var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
                 if (String.IsNullOrWhiteSpace(tenantId))
                 {
-                    throw new ApiException("No tenant was found for the provided API key", statusCode: StatusCodes.Status404NotFound);
+                    throw new ApiException(new RangerApiError("No tenant was found for the specified tenant id"), StatusCodes.Status404NotFound);
                 }
                 return new ApiResponse("Successfully retrieved tenant id", tenantId);
             }
-
-            return new ApiResponse("The API key does not have a valid prefix", statusCode: StatusCodes.Status400BadRequest);
+            throw new ApiException(new RangerApiError("The API key does not have a valid prefix"), StatusCodes.Status400BadRequest);
         }
 
         ///<summary>
@@ -83,7 +85,7 @@ namespace Ranger.Services.Projects
             {
                 var message = "Failed to get Project Ids for user";
                 logger.LogError(ex, message);
-                throw new ApiException(message, StatusCodes.Status500InternalServerError);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
             }
             return new ApiResponse("Successfully retrieved project ids", projectIds);
         }
@@ -104,7 +106,7 @@ namespace Ranger.Services.Projects
             {
                 var message = $"No project was found for the provided API key.";
                 logger.LogWarning(message);
-                throw new ApiException(message, StatusCodes.Status500InternalServerError);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
             }
             var result = new { ProjectId = project.ProjectId, Enabled = project.Enabled, Name = project.Name };
             return new ApiResponse("Successfully retrieved project", result);
@@ -122,42 +124,38 @@ namespace Ranger.Services.Projects
             var repo = projectsRepositoryFactory(tenantId);
 
             RangerApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email);
-            if (!apiResponse.IsError)
-            {
-                var role = Enum.Parse<RolesEnum>(apiResponse.Result);
+            var role = Enum.Parse<RolesEnum>(apiResponse.Result);
 
-                IEnumerable<(Project project, int version)> projects;
-                try
+            IEnumerable<(Project project, int version)> projects;
+            try
+            {
+                if (role == RolesEnum.User)
                 {
-                    if (role == RolesEnum.User)
-                    {
-                        projects = await repo.GetProjectsForUser(email);
-                    }
-                    else
-                    {
-                        projects = await repo.GetAllProjects();
-                    }
+                    projects = await repo.GetProjectsForUser(email);
                 }
-                catch (Exception ex)
+                else
                 {
-                    var message = "Failed to retrieve projects for user";
-                    logger.LogError(message, ex);
-                    throw new ApiException(message, StatusCodes.Status500InternalServerError);
+                    projects = await repo.GetAllProjects();
                 }
-                var result = projects.Select((_) =>
-                                   new
-                                   {
-                                       Description = _.project.Description,
-                                       Enabled = _.project.Enabled,
-                                       Name = _.project.Name,
-                                       ProjectId = _.project.ProjectId,
-                                       LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
-                                       TestApiKeyPrefix = _.project.TestApiKeyPrefix,
-                                       Version = _.version
-                                   });
-                return new ApiResponse("Successfully retrieved all projects for user", result);
             }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
+            catch (Exception ex)
+            {
+                var message = "Failed to retrieve projects for user";
+                logger.LogError(message, ex);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
+            }
+            var result = projects.Select((_) =>
+                               new
+                               {
+                                   Description = _.project.Description,
+                                   Enabled = _.project.Enabled,
+                                   Name = _.project.Name,
+                                   ProjectId = _.project.ProjectId,
+                                   LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
+                                   TestApiKeyPrefix = _.project.TestApiKeyPrefix,
+                                   Version = _.version
+                               });
+            return new ApiResponse("Successfully retrieved all projects for user", result);
         }
 
         ///<summary>
@@ -195,18 +193,18 @@ namespace Ranger.Services.Projects
             catch (ConcurrencyException ex)
             {
                 logger.LogError(ex.Message);
-                throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
+                throw new ApiException(new RangerApiError(ex.Message), StatusCodes.Status409Conflict);
             }
             catch (RangerException ex)
             {
                 logger.LogError(ex.Message);
-                throw new ApiException(ex.Message, StatusCodes.Status400BadRequest);
+                throw new ApiException(new RangerApiError(ex.Message), StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
             {
                 var _ = "An error occurred resetting the API key";
                 logger.LogError(ex, _);
-                throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
+                throw new ApiException(new RangerApiError(_), statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -230,7 +228,7 @@ namespace Ranger.Services.Projects
             {
                 var message = "The project was not found. PUT can only be used to update existing projects";
                 logger.LogDebug(message);
-                throw new ApiException(message, StatusCodes.Status400BadRequest);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status400BadRequest);
             }
             Project updatedProject = null;
             try
@@ -251,28 +249,28 @@ namespace Ranger.Services.Projects
             catch (ConcurrencyException ex)
             {
                 logger.LogError(ex.Message);
-                throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status409Conflict);
             }
             catch (EventStreamDataConstraintException ex)
             {
                 logger.LogError(ex, "Failed to save project stream because a constraint was violated");
-                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status409Conflict);
             }
             catch (NoOpException ex)
             {
                 logger.LogInformation(ex.Message);
-                throw new ApiException(ex.Message, statusCode: StatusCodes.Status304NotModified);
+                return new ApiResponse(ex.Message, statusCode: StatusCodes.Status304NotModified);
             }
             catch (RangerException ex)
             {
                 logger.LogInformation(ex.Message);
-                throw new ApiException(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
             {
                 var message = "An error occurred updating the project";
                 logger.LogError(ex, message);
-                throw new ApiException(message, StatusCodes.Status500InternalServerError);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
             }
             return new ApiResponse("Successfully updated project", new ProjectResponseModel
             {
@@ -299,32 +297,28 @@ namespace Ranger.Services.Projects
         public async Task<ApiResponse> SoftDeleteProject(string tenantId, Guid projectId, SoftDeleteModel softDeleteModel)
         {
             var apiResponse = await subscriptionsClient.DecrementResource(tenantId, ResourceEnum.Project);
-            if (!apiResponse.IsError)
+            var repo = projectsRepositoryFactory(tenantId);
+            try
             {
-                var repo = projectsRepositoryFactory(tenantId);
-                try
-                {
-                    await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
-                }
-                catch (ConcurrencyException ex)
-                {
-                    logger.LogError(ex.Message);
-                    throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
-                }
-                catch (RangerException ex)
-                {
-                    logger.LogInformation(ex.Message);
-                    throw new ApiException(ex.Message, statusCode: StatusCodes.Status400BadRequest);
-                }
-                catch (Exception ex)
-                {
-                    var message = "An error occurred deleting the project";
-                    logger.LogError(ex, message);
-                    throw new ApiException(message, StatusCodes.Status500InternalServerError);
-                }
-                return new ApiResponse("Successfully deleted project");
+                await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
             }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
+            catch (ConcurrencyException ex)
+            {
+                logger.LogError(ex.Message);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status409Conflict);
+            }
+            catch (RangerException ex)
+            {
+                logger.LogInformation(ex.Message);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status400BadRequest);
+            }
+            catch (Exception ex)
+            {
+                var message = "An error occurred deleting the project";
+                logger.LogError(ex, message);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
+            }
+            return new ApiResponse("Successfully deleted project");
         }
 
         ///<summary>
@@ -337,13 +331,8 @@ namespace Ranger.Services.Projects
         public async Task<ApiResponse> PostProject(string tenantId, PostProjectModel projectModel)
         {
             var apiResponse = await subscriptionsClient.IncrementResource(tenantId, ResourceEnum.Project);
-            if (!apiResponse.IsError)
-            {
-                var repo = projectsRepositoryFactory(tenantId);
-
-                return await AddNewProject(tenantId, projectModel, repo);
-            }
-            throw new ApiException(apiResponse.ResponseException.ExceptionMessage.Error.Message, statusCode: apiResponse.StatusCode);
+            var repo = projectsRepositoryFactory(tenantId);
+            return await AddNewProject(tenantId, projectModel, repo);
         }
 
         private async Task<ApiResponse> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
@@ -416,13 +405,13 @@ namespace Ranger.Services.Projects
             catch (EventStreamDataConstraintException ex)
             {
                 logger.LogError(ex, "Failed to save project stream because a constraint was violated");
-                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
+                throw new ApiException(new RangerApiError(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message), StatusCodes.Status409Conflict);
             }
             catch (Exception ex)
             {
                 var message = "An error occurred creating the project";
                 logger.LogError(ex, message);
-                throw new ApiException(message, StatusCodes.Status500InternalServerError);
+                throw new ApiException(new RangerApiError(message), StatusCodes.Status500InternalServerError);
             }
 
             return new ApiResponse("Successfully created new project", new ProjectResponseModel

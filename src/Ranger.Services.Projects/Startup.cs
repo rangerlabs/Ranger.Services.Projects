@@ -47,14 +47,6 @@ namespace Ranger.Services.Projects
             services.AddSwaggerGen("Projects API", "v1");
             services.AddApiVersioning(o => o.ApiVersionReader = new HeaderApiVersionReader("api-version"));
 
-            services.AddAuthorization(options =>
-            {
-                options.AddPolicy("projectsApi", policyBuilder =>
-                {
-                    policyBuilder.RequireScope("projectsApi");
-                });
-            });
-
             services.AddDbContext<ProjectsDbContext>((serviceProvider, options) =>
             {
                 options.UseNpgsql(configuration["cloudSql:ConnectionString"]);
@@ -62,6 +54,7 @@ namespace Ranger.Services.Projects
                 ServiceLifetime.Transient
             );
 
+            services.AddPollyPolicyRegistry();
             services.AddTenantsHttpClient("http://tenants:8082", "tenantsApi", "cKprgh9wYKWcsm");
 
 
@@ -73,7 +66,6 @@ namespace Ranger.Services.Projects
                 {
                     options.Authority = "http://identity:5000/auth";
                     options.ApiName = "projectsApi";
-
                     options.RequireHttpsMetadata = false;
                 });
 
@@ -111,8 +103,12 @@ namespace Ranger.Services.Projects
 
             app.UseSwagger("v1", "Projects API");
             app.UseAutoWrapper();
+
             app.UseRouting();
+
             app.UseAuthentication();
+            app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
