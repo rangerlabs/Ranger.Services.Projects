@@ -56,6 +56,8 @@ namespace Ranger.Services.Projects
 
             services.AddPollyPolicyRegistry();
             services.AddTenantsHttpClient("http://tenants:8082", "tenantsApi", "cKprgh9wYKWcsm");
+            services.AddIdentityHttpClient("http://identity:5000", "IdentityServerApi", "89pCcXHuDYTXY");
+            services.AddSubscriptionsHttpClient("http://subscriptions:8089", "subscriptionsApi", "4T3SXqXaD6GyGHn4RY");
 
 
             services.AddTransient<IProjectsDbContextInitializer, ProjectsDbContextInitializer>();
