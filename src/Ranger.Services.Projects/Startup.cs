@@ -62,6 +62,7 @@ namespace Ranger.Services.Projects
 
             services.AddTransient<IProjectsDbContextInitializer, ProjectsDbContextInitializer>();
             services.AddTransient<ILoginRoleRepository<ProjectsDbContext>, LoginRoleRepository<ProjectsDbContext>>();
+            services.AddTransient<ProjectsService>();
 
             services.AddAuthentication("Bearer")
                 .AddIdentityServerAuthentication(options =>

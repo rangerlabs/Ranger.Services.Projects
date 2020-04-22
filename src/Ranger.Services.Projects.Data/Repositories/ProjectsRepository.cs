@@ -112,6 +112,43 @@ namespace Ranger.Services.Projects.Data
             return projects;
         }
 
+        public async Task<(Project project, int version)> GetProjectByName(string projectName)
+        {
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                throw new ArgumentException("message", nameof(projectName));
+            }
+
+            var projectStream = await this.context.ProjectStreams.
+            FromSqlRaw($@"
+                WITH not_deleted AS(
+	                SELECT 
+            	    	ps.id,
+            	    	ps.tenant_id,
+            	    	ps.stream_id,
+            	    	ps.version,
+            	    	ps.data,
+            	    	ps.event,
+            	    	ps.inserted_at,
+            	    	ps.inserted_by
+            	    FROM project_streams ps, project_unique_constraints puc
+            	    WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+               )
+               SELECT DISTINCT ON (ps.stream_id) 
+              		ps.id,
+              		ps.tenant_id,
+              		ps.stream_id,
+              		ps.version,
+            		ps.data,
+            		ps.event,
+            		ps.inserted_at,
+            		ps.inserted_by
+                FROM not_deleted ps
+                WHERE (ps.data ->> 'Name') = {projectName}
+                ORDER BY ps.stream_id, ps.version DESC;").SingleAsync();
+            return (JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version);
+        }
+
         public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
         {
             var projectStreams = await this.context.ProjectStreams.
