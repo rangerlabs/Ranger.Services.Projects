@@ -14,22 +14,22 @@ namespace Ranger.Services.Projects
         {
             if (string.IsNullOrWhiteSpace(UserEmail))
             {
-                throw new System.ArgumentException($"{nameof(UserEmail)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(UserEmail)} was null or whitespace");
             }
 
             if (string.IsNullOrWhiteSpace(tenantId))
             {
-                throw new System.ArgumentException($"{nameof(tenantId)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(tenantId)} was null or whitespace");
             }
 
             if (string.IsNullOrWhiteSpace(Name))
             {
-                throw new System.ArgumentException($"{nameof(Name)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(Name)} was null or whitespace");
             }
 
             if (string.IsNullOrWhiteSpace(Description))
             {
-                throw new System.ArgumentException($"{nameof(Description)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(Description)} was null or whitespace");
             }
             this.TenantId = tenantId;
             this.Name = Name;

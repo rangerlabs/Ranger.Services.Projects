@@ -57,7 +57,7 @@ namespace Ranger.Services.Projects.Data
                     {
                         case ProjectJsonbConstraintNames.Name:
                             {
-                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                                throw new EventStreamDataConstraintException("The project name is in use by another project");
                             }
                         default:
                             {
@@ -200,7 +200,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new ArgumentException($"{nameof(apiKey)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(apiKey)} was null or whitespace");
             }
 
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
@@ -221,7 +221,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException($"{nameof(name)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(name)} was null or whitespace");
             }
 
             this.context.ProjectStreams.RemoveRange(
@@ -233,7 +233,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
             var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
@@ -293,7 +293,7 @@ namespace Ranger.Services.Projects.Data
                         {
                             case ProjectJsonbConstraintNames.ProjectId_Version:
                                 {
-                                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
                                 }
                             default:
                                 {
@@ -308,7 +308,7 @@ namespace Ranger.Services.Projects.Data
             }
             else
             {
-                throw new RangerException($"No project was found for project id '{projectId}'.");
+                throw new RangerException($"No project was found for project id '{projectId}'");
             }
         }
 
@@ -316,7 +316,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
@@ -346,7 +346,7 @@ namespace Ranger.Services.Projects.Data
                     {
                         await this.context.SaveChangesAsync();
                         deleted = true;
-                        logger.LogInformation($"Project {currentProject.Name} deleted.");
+                        logger.LogInformation($"Project {currentProject.Name} deleted");
                     }
                     catch (DbUpdateException ex)
                     {
@@ -358,7 +358,7 @@ namespace Ranger.Services.Projects.Data
                             {
                                 case ProjectJsonbConstraintNames.ProjectId_Version:
                                     {
-                                        logger.LogError($"The update version number was outdated. The current and updated stream versions are '{currentProjectStream.Version + 1}'.");
+                                        logger.LogError($"The update version number was outdated. The current and updated stream versions are '{currentProjectStream.Version + 1}'");
                                         maxConcurrencyAttempts--;
                                         continue;
                                     }
@@ -369,12 +369,12 @@ namespace Ranger.Services.Projects.Data
                 }
                 if (!deleted)
                 {
-                    throw new ConcurrencyException($"After '{maxConcurrencyAttempts}' attempts, the version was still outdated. Too many updates have been applied in a short period of time. The current stream version is '{currentProjectStream.Version + 1}'. The project was not deleted.");
+                    throw new ConcurrencyException($"After '{maxConcurrencyAttempts}' attempts, the version was still outdated. Too many updates have been applied in a short period of time. The current stream version is '{currentProjectStream.Version + 1}'. The project was not deleted");
                 }
             }
             else
             {
-                throw new RangerException($"No project was found for project id '{projectId}'.");
+                throw new RangerException($"No project was found for project id '{projectId}'");
             }
         }
 
@@ -382,17 +382,17 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
             if (string.IsNullOrWhiteSpace(eventName))
             {
-                throw new ArgumentException($"{nameof(eventName)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(eventName)} was null or whitespace");
             }
 
             if (project is null)
             {
-                throw new ArgumentException($"{nameof(project)} was null.");
+                throw new ArgumentException($"{nameof(project)} was null");
             }
 
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(project.ProjectId);
@@ -440,11 +440,11 @@ namespace Ranger.Services.Projects.Data
                     {
                         case ProjectJsonbConstraintNames.Name:
                             {
-                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                                throw new EventStreamDataConstraintException("The project name is in use by another project");
                             }
                         case ProjectJsonbConstraintNames.ProjectId_Version:
                             {
-                                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
                             }
                         default:
                             {
@@ -473,7 +473,7 @@ namespace Ranger.Services.Projects.Data
             var requestJObject = JsonConvert.DeserializeObject<JObject>(serializedNewProjectData);
             if (JToken.DeepEquals(currentJObject, requestJObject))
             {
-                throw new NoOpException("No changes were made from the previous version.");
+                throw new NoOpException("No changes were made from the previous version");
             }
         }
 
@@ -481,11 +481,11 @@ namespace Ranger.Services.Projects.Data
         {
             if (version - currentProjectStream.Version > 1)
             {
-                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
             }
             if (version - currentProjectStream.Version <= 0)
             {
-                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
             }
         }
 
