@@ -90,7 +90,8 @@ namespace Ranger.Services.Projects
         {
             if ((string.IsNullOrWhiteSpace(projectName) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(apiKey)) || (!string.IsNullOrWhiteSpace(projectName) && !string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(apiKey)))
             {
-                throw new ApiException("Either a 'projectName' or 'email' or 'apiKey' query string parameter is required", StatusCodes.Status400BadRequest);
+                var projects = await projectsService.GetAllProjects(tenantId);
+                return new ApiResponse("Successfully retrieved projects", projects);
             }
             try
             {
@@ -255,7 +256,7 @@ namespace Ranger.Services.Projects
         }
 
         ///<summary>
-        /// Updates and existing project
+        /// Updates an existing project
         ///</summary>
         ///<param name="tenantId">The tenant id the project API key is associated with</param>
         ///<param name="projectId">The project id for the API key to reset</param>
@@ -266,7 +267,6 @@ namespace Ranger.Services.Projects
         [HttpDelete("/projects/{tenantId}/{projectId}")]
         public async Task<ApiResponse> SoftDeleteProject(string tenantId, Guid projectId, SoftDeleteModel softDeleteModel)
         {
-            var apiResponse = await subscriptionsClient.DecrementResource(tenantId, ResourceEnum.Project);
             var repo = projectsRepositoryFactory(tenantId);
             try
             {
@@ -300,8 +300,13 @@ namespace Ranger.Services.Projects
         [HttpPost("/projects/{tenantId}")]
         public async Task<ApiResponse> PostProject(string tenantId, PostProjectModel projectModel)
         {
-            var apiResponse = await subscriptionsClient.IncrementResource(tenantId, ResourceEnum.Project);
+            var limitsApiResponse = await subscriptionsClient.GetLimitDetails<SubscriptionLimitDetails>(tenantId);
             var repo = projectsRepositoryFactory(tenantId);
+            var projects = await repo.GetAllProjects();
+            if (projects.Count() >= limitsApiResponse.Result.Limit.Projects)
+            {
+                throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription limit met", statusCode: StatusCodes.Status402PaymentRequired);
+            }
             return await AddNewProject(tenantId, projectModel, repo);
         }
 

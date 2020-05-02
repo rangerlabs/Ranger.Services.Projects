@@ -31,6 +31,8 @@ namespace Ranger.Services.Projects.Data
 
         public async Task AddProjectAsync(string userEmail, string eventName, Project project)
         {
+            var now = DateTime.UtcNow;
+            project.CreatedOn = now;
             var newProjectStream = new ProjectStream()
             {
                 TenantId = this.contextTenant.TenantId,
@@ -38,7 +40,7 @@ namespace Ranger.Services.Projects.Data
                 Version = 0,
                 Data = JsonConvert.SerializeObject(project),
                 Event = eventName,
-                InsertedAt = DateTime.UtcNow,
+                InsertedAt = now,
                 InsertedBy = userEmail,
             };
             this.AddProjectUniqueConstraints(newProjectStream, project);
@@ -215,18 +217,6 @@ namespace Ranger.Services.Projects.Data
                 projectStream = await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'HashedTestApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
             }
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
-        }
-
-        public async Task RemoveProjectAsync(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException($"{nameof(name)} was null or whitespace");
-            }
-
-            this.context.ProjectStreams.RemoveRange(
-                await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} ORDER BY version DESC").ToListAsync()
-            );
         }
 
         public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, EnvironmentEnum environment, int version, Guid projectId)

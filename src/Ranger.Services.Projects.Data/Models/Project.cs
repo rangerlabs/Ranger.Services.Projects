@@ -14,5 +14,6 @@ namespace Ranger.Services.Projects.Data
         public string Description { get; set; }
         public bool Enabled { get; set; } = true;
         public bool Deleted { get; set; } = false;
+        public DateTime CreatedOn { get; set; }
     }
 }
