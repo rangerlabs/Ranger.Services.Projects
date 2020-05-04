@@ -123,7 +123,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "An error occurred retrieving projects";
+                var message = "Failed to retrieve projects";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
@@ -173,7 +173,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var _ = "An error occurred resetting the API key";
+                var _ = "Failed to reset the API key";
                 logger.LogError(ex, _);
                 throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
             }
@@ -239,7 +239,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "An error occurred updating the project";
+                var message = $"Failed to update project '{projectModel.Name}'";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
@@ -284,7 +284,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "An error occurred deleting the project";
+                var message = "Failed to delete project";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
@@ -384,7 +384,7 @@ namespace Ranger.Services.Projects
             }
             catch (Exception ex)
             {
-                var message = "An error occurred creating the project";
+                var message = $"Failed to create project '{projectModel.Name}'";
                 logger.LogError(ex, message);
                 throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }

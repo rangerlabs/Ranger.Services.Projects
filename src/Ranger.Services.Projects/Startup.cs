@@ -125,7 +125,8 @@ namespace Ranger.Services.Projects
                 )
                 .SubscribeCommand<UpdateUserProjects>((c, ex) =>
                     new UpdateUserProjectsRejected(ex.Message, "")
-                );
+                )
+                .SubscribeCommand<EnforceProjectResourceLimits>();
         }
 
         private void OnShutdown()
