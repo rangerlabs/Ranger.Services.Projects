@@ -300,12 +300,16 @@ namespace Ranger.Services.Projects
         [HttpPost("/projects/{tenantId}")]
         public async Task<ApiResponse> PostProject(string tenantId, PostProjectModel projectModel)
         {
-            var limitsApiResponse = await subscriptionsClient.GetLimitDetails<SubscriptionLimitDetails>(tenantId);
+            var limitsApiResponse = await subscriptionsClient.GetSubscription<SubscriptionLimitDetails>(tenantId);
             var repo = projectsRepositoryFactory(tenantId);
             var projects = await repo.GetAllProjects();
             if (projects.Count() >= limitsApiResponse.Result.Limit.Projects)
             {
                 throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription limit met", statusCode: StatusCodes.Status402PaymentRequired);
+            }
+            if (!limitsApiResponse.Result.Active)
+            {
+                throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription is inactive", statusCode: StatusCodes.Status402PaymentRequired);
             }
             return await AddNewProject(tenantId, projectModel, repo);
         }
