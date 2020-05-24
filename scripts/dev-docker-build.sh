@@ -1,1 +1,1 @@
-docker build -t ranger.services.projects:dev --build-arg MYGET_API_KEY=$MYGET_KEY --build-arg BUILD_CONFIG=Debug --build-arg ASPNETCORE_ENVIRONMENT=Development .
+docker build -t ranger.services.projects:dev --build-arg MYGET_API_KEY=$MYGET_KEY --build-arg BUILD_CONFIG=Debug --build-arg ASPNETCORE_ENVIRONMENT=Development --build-arg DOCKER_IMAGE_TAG=Development .

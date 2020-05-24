@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
+using AutoWrapper.Wrappers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -16,207 +16,192 @@ using Ranger.Services.Projects.Data;
 namespace Ranger.Services.Projects
 {
     [ApiController]
+    [ApiVersion("1.0")]
+    [Authorize]
     public class ProjectController : ControllerBase
     {
-        private readonly ITenantsClient tenantsClient;
+        private readonly IBusPublisher busPublisher;
         private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
         private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
-        private readonly IIdentityClient identityClient;
+        private readonly IdentityHttpClient identityClient;
+        private readonly SubscriptionsHttpClient subscriptionsClient;
+        private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
+        private readonly ProjectsService projectsService;
 
-        public ProjectController(ITenantsClient tenantsClient, IIdentityClient identityClient, Func<string, ProjectsRepository> projectsRepositoryFactory, Func<string, ProjectUsersRepository> projectUsersRepositoryFactory, ILogger<ProjectController> logger)
+        public ProjectController(
+            IBusPublisher busPublisher,
+            IdentityHttpClient identityClient,
+            SubscriptionsHttpClient subscriptionsClient,
+            Func<string, ProjectsRepository> projectsRepositoryFactory,
+            Func<string, ProjectUsersRepository> projectUsersRepositoryFactory,
+            IProjectUniqueContraintRepository projectUniqueContraintRepository,
+            ProjectsService projectsService,
+            ILogger<ProjectController> logger)
         {
-            this.tenantsClient = tenantsClient;
+            this.busPublisher = busPublisher;
             this.identityClient = identityClient;
+            this.subscriptionsClient = subscriptionsClient;
             this.projectsRepositoryFactory = projectsRepositoryFactory;
             this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
+            this.projectUniqueContraintRepository = projectUniqueContraintRepository;
+            this.projectsService = projectsService;
             this.logger = logger;
         }
 
-        [HttpGet("{domain}/project/authorized/{email}")]
-        public async Task<IActionResult> GetProjectIdsForUser([FromRoute] string domain, [FromRoute] string email)
+        ///<summary>
+        /// Gets the tenant id for the provided API Key
+        ///</summary>
+        ///<param name="apiKey">The API dey to request the tenant's unique identifier for</param>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpGet("projects/{apikey}/tenant-id")]
+        public async Task<ApiResponse> GetTenantIdByApiKey(string apiKey)
         {
-            if (string.IsNullOrWhiteSpace(email))
+            if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
             {
-                var apiErrorContent = new ApiErrorContent();
-                apiErrorContent.Errors.Add($"{nameof(email)} was null or whitespace.");
-                return BadRequest(apiErrorContent);
-            }
-
-            IProjectUsersRepository repo;
-            try
-            {
-                repo = projectUsersRepositoryFactory(domain);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-
-            IEnumerable<Guid> projectIds = new List<Guid>();
-            try
-            {
-                projectIds = await repo.GetAuthorizedProjectIdsForUserEmail(email);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, $"Failed to get Project Ids for user {email}.");
-            }
-            return Ok(projectIds);
-        }
-
-        [HttpGet("{domain}/project")]
-        public async Task<IActionResult> GetProjectByApiKey([FromRoute] string domain, [FromQuery] string apiKey)
-        {
-            IProjectsRepository repo;
-            try
-            {
-                repo = projectsRepositoryFactory(domain);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-            var project = await repo.GetProjectByApiKeyAsync(apiKey);
-            if (project is null)
-            {
-                var apiErrorContent = new ApiErrorContent();
-                apiErrorContent.Errors.Add($"No project was found for the provided API Key.");
-                return NotFound(apiErrorContent);
-            }
-            var result = new { ProjectId = project.ProjectId, Enabled = project.Enabled, Name = project.Name };
-            return Ok(result);
-        }
-
-        [HttpGet("{domain}/project/{email}")]
-        public async Task<IActionResult> GetProjects([FromRoute] string domain, [FromRoute] string email)
-        {
-            IProjectsRepository repo;
-            try
-            {
-                repo = projectsRepositoryFactory(domain);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-            RolesEnum role;
-            try
-            {
-                var roleResult = await this.identityClient.GetUserRoleAsync<RoleResponseModel>(domain, email);
-                role = Enum.Parse<RolesEnum>(roleResult.Role);
-            }
-            catch (HttpClientException<RoleResponseModel> ex)
-            {
-                if ((int)ex.ApiResponse.StatusCode == StatusCodes.Status404NotFound)
+                var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
+                if (String.IsNullOrWhiteSpace(tenantId))
                 {
-                    return NotFound();
+                    throw new ApiException("No tenant was found for the specified tenant id", StatusCodes.Status404NotFound);
+                }
+                return new ApiResponse("Successfully retrieved tenant id", tenantId);
+            }
+            throw new ApiException("The API key does not have a valid prefix", StatusCodes.Status400BadRequest);
+        }
+
+        ///<summary>
+        /// Gets the project for a project's name
+        ///</summary>
+        ///<param name="tenantId">The tenant id the user is associated with</param>
+        ///<param name="projectName">The name of the project to query for</param>
+        ///<param name="email">The email to retrieve the authorized projects for</param>
+        ///<param name="apiKey">The apiKey of the project to retrieve</param>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpGet("/projects/{tenantId}")]
+        public async Task<ApiResponse> GetProjects(
+            string tenantId,
+            [FromQuery] string projectName,
+            [FromQuery] string email,
+            [FromQuery] string apiKey)
+        {
+            if ((string.IsNullOrWhiteSpace(projectName) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(apiKey)) || (!string.IsNullOrWhiteSpace(projectName) && !string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(apiKey)))
+            {
+                var projects = await projectsService.GetAllProjects(tenantId);
+                return new ApiResponse("Successfully retrieved projects", projects);
+            }
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(projectName))
+                {
+                    var project = await projectsService.GetProjectByName(tenantId, projectName);
+                    return new ApiResponse("Successfully retrieved projects", project);
+                }
+                else if (!string.IsNullOrWhiteSpace(email))
+                {
+                    var projects = await projectsService.GetProjectsForUser(tenantId, email);
+                    return new ApiResponse("Successfully retrieved projects", projects);
                 }
                 else
                 {
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-            }
-
-            IEnumerable<(Project project, int version)> projects;
-            if (role == RolesEnum.User)
-            {
-                projects = await repo.GetProjectsForUser(email);
-            }
-            else
-            {
-                projects = await repo.GetAllProjects();
-            }
-            var result = projects.Select((_) =>
-                               new
-                               {
-                                   Description = _.project.Description,
-                                   Enabled = _.project.Enabled,
-                                   Name = _.project.Name,
-                                   ProjectId = _.project.ProjectId,
-                                   LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
-                                   TestApiKeyPrefix = _.project.TestApiKeyPrefix,
-                                   Version = _.version
-                               });
-            return Ok(result);
-        }
-
-        [HttpPut("{domain}/project/{projectId}/{environment}/reset")]
-        public async Task<IActionResult> ApiKeyReset([FromRoute] string domain, [FromRoute] Guid projectId, [FromRoute] string environment, ApiKeyResetModel apiKeyResetModel)
-        {
-
-            if (environment == "live" || environment == "test")
-            {
-                IProjectsRepository repo;
-                try
-                {
-                    repo = projectsRepositoryFactory(domain);
-                }
-                catch (Exception)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                try
-                {
-                    var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
-                    return Ok(new ProjectResponseModel
+                    if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
                     {
-                        ProjectId = project.ProjectId,
-                        Name = project.Name,
-                        Description = project.Description,
-                        LiveApiKey = environment == "live" ? newApiKey : "",
-                        TestApiKey = environment == "test" ? newApiKey : "",
-                        LiveApiKeyPrefix = project.LiveApiKeyPrefix,
-                        TestApiKeyPrefix = project.TestApiKeyPrefix,
-                        Enabled = project.Enabled,
-                        Version = apiKeyResetModel.Version
-                    });
-                }
-                catch (ConcurrencyException ex)
-                {
-                    logger.LogError(ex.Message);
-                    var errors = new ApiErrorContent();
-                    errors.Errors.Add(ex.Message);
-                    return Conflict(errors);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to save project stream.");
-                    return StatusCode(StatusCodes.Status500InternalServerError);
+                        var project = await projectsService.GetProjectByApiKey(tenantId, apiKey);
+                        if (project is null)
+                        {
+                            var message = $"No project was found for the provided API key.";
+                            logger.LogWarning(message);
+                            throw new ApiException(message, StatusCodes.Status404NotFound);
+                        }
+                        return new ApiResponse("Successfully retrieved projects", project);
+                    }
+                    throw new ApiException("The API key does not have a valid prefix", StatusCodes.Status400BadRequest);
                 }
             }
-
-            var invalidEnvironmentErrors = new ApiErrorContent();
-            invalidEnvironmentErrors.Errors.Add("Invalid environment name. Expected either 'live' or 'test'.");
-            return BadRequest(invalidEnvironmentErrors);
+            catch (Exception ex)
+            {
+                var message = "Failed to retrieve projects";
+                logger.LogError(ex, message);
+                throw new ApiException(message, StatusCodes.Status500InternalServerError);
+            }
         }
 
-        [HttpPut("{domain}/project/{projectId}")]
-        public async Task<IActionResult> PutProject([FromRoute] string domain, [FromRoute] Guid projectId, PutProjectModel projectModel)
+        ///<summary>
+        /// Resets the API key for a given environment
+        ///</summary>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="environment">The environment for the API key to reset - "live" or "test"</param>
+        ///<param name="apiKeyResetModel">The model necessary to verify the key reset</param>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [HttpPut("/projects/{tenantId}/{projectId}/{environment}/reset")]
+        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, EnvironmentEnum environment, ApiKeyResetModel apiKeyResetModel)
         {
-            IProjectsRepository repo;
+            var repo = projectsRepositoryFactory(tenantId);
+
+            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
             try
             {
-                repo = projectsRepositoryFactory(domain);
+                var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
+                return new ApiResponse("Successfully reset api key", new ProjectResponseModel
+                {
+                    ProjectId = project.ProjectId,
+                    Name = project.Name,
+                    Description = project.Description,
+                    LiveApiKey = environmentString == "live" ? newApiKey : "",
+                    TestApiKey = environmentString == "test" ? newApiKey : "",
+                    LiveApiKeyPrefix = project.LiveApiKeyPrefix,
+                    TestApiKeyPrefix = project.TestApiKeyPrefix,
+                    Enabled = project.Enabled,
+                    Version = apiKeyResetModel.Version
+                });
             }
-            catch (Exception)
+            catch (ConcurrencyException ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                logger.LogError(ex.Message);
+                throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
             }
+            catch (RangerException ex)
+            {
+                logger.LogError(ex.Message);
+                throw new ApiException(ex.Message, StatusCodes.Status400BadRequest);
+            }
+            catch (Exception ex)
+            {
+                var _ = "Failed to reset the API key";
+                logger.LogError(ex, _);
+                throw new ApiException(_, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        ///<summary>
+        /// Updates an existing project
+        ///</summary>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="projectModel">The model necessary to update a project</param>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status304NotModified)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [HttpPut("/projects/{tenantId}/{projectId}")]
+        public async Task<ApiResponse> PutProject(string tenantId, Guid projectId, PutProjectModel projectModel)
+        {
+            var repo = projectsRepositoryFactory(tenantId);
 
             var project = await repo.GetProjectByProjectIdAsync(projectId);
             if (project is null)
             {
-                var errors = new ApiErrorContent();
-                errors.Errors.Add("The PUT method can only be used to update projects at this time.");
-                return NotFound(errors);
+                var message = "The project was not found. PUT can only be used to update existing projects";
+                logger.LogDebug(message);
+                throw new ApiException(message, StatusCodes.Status400BadRequest);
             }
             Project updatedProject = null;
-
             try
             {
                 updatedProject = await repo.UpdateProjectAsync(
@@ -235,28 +220,30 @@ namespace Ranger.Services.Projects
             catch (ConcurrencyException ex)
             {
                 logger.LogError(ex.Message);
-                var errors = new ApiErrorContent();
-                errors.Errors.Add(ex.Message);
-                return Conflict(errors);
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (EventStreamDataConstraintException ex)
             {
-                logger.LogError(ex, "Failed to save project stream because a constraint was violated.");
-                var errors = new ApiErrorContent();
-                errors.Errors.Add(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project." : ex.Message);
-                return Conflict(errors);
+                logger.LogError(ex, "Failed to save project stream because a constraint was violated");
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (NoOpException ex)
             {
                 logger.LogInformation(ex.Message);
-                return StatusCode(StatusCodes.Status304NotModified);
+                return new ApiResponse(ex.Message, statusCode: StatusCodes.Status304NotModified);
+            }
+            catch (RangerException ex)
+            {
+                logger.LogInformation(ex.Message);
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to save project stream.");
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                var message = $"Failed to update project '{projectModel.Name}'";
+                logger.LogError(ex, message);
+                throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
-            return Ok(new ProjectResponseModel
+            return new ApiResponse("Successfully updated project", new ProjectResponseModel
             {
                 ProjectId = updatedProject.ProjectId,
                 Name = updatedProject.Name,
@@ -268,49 +255,67 @@ namespace Ranger.Services.Projects
             });
         }
 
-        [HttpDelete("{domain}/project/{projectId}")]
-        public async Task<IActionResult> SoftDeleteProject([FromRoute] string domain, [FromRoute] Guid projectId, [FromBody] SoftDeleteModel softDeleteModel)
+        ///<summary>
+        /// Updates an existing project
+        ///</summary>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectId">The project id for the API key to reset</param>
+        ///<param name="softDeleteModel">The model necessary to delete a project</param>
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [HttpDelete("/projects/{tenantId}/{projectId}")]
+        public async Task<ApiResponse> SoftDeleteProject(string tenantId, Guid projectId, SoftDeleteModel softDeleteModel)
         {
-            IProjectsRepository repo;
-            try
-            {
-                repo = projectsRepositoryFactory(domain);
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
+            var repo = projectsRepositoryFactory(tenantId);
             try
             {
                 await repo.SoftDeleteAsync(softDeleteModel.UserEmail, projectId);
             }
+            catch (ConcurrencyException ex)
+            {
+                logger.LogError(ex.Message);
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
+            }
+            catch (RangerException ex)
+            {
+                logger.LogInformation(ex.Message);
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
+            }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete project stream.");
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                var message = "Failed to delete project";
+                logger.LogError(ex, message);
+                throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
-            return NoContent();
+            return new ApiResponse("Successfully deleted project");
         }
 
-        [HttpPost("{domain}/project")]
-        public async Task<IActionResult> PostProject([FromRoute] string domain, PostProjectModel projectModel)
+        ///<summary>
+        /// Creates a new project
+        ///</summary>
+        ///<param name="tenantId">The tenant id the project API key is associated with</param>
+        ///<param name="projectModel">The model necessary to create a project</param>
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [HttpPost("/projects/{tenantId}")]
+        public async Task<ApiResponse> PostProject(string tenantId, PostProjectModel projectModel)
         {
-            IProjectsRepository repo;
-            try
+            var limitsApiResponse = await subscriptionsClient.GetSubscription<SubscriptionLimitDetails>(tenantId);
+            var repo = projectsRepositoryFactory(tenantId);
+            var projects = await repo.GetAllProjects();
+            if (!limitsApiResponse.Result.Active)
             {
-                repo = projectsRepositoryFactory(domain);
+                throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription is inactive", statusCode: StatusCodes.Status402PaymentRequired);
             }
-            catch (Exception)
+            if (projects.Count() >= limitsApiResponse.Result.Limit.Projects)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription limit met", statusCode: StatusCodes.Status402PaymentRequired);
             }
 
-            return await AddNewProject(domain, projectModel, repo);
-
+            return await AddNewProject(tenantId, projectModel, repo);
         }
 
-        private async Task<IActionResult> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
+        private async Task<ApiResponse> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
         {
             string liveApiKeyGuid;
             string testApiKeyGuid;
@@ -379,18 +384,17 @@ namespace Ranger.Services.Projects
             }
             catch (EventStreamDataConstraintException ex)
             {
-                logger.LogError(ex, "Failed to save project stream because a constraint was violated.");
-                var errors = new ApiErrorContent();
-                errors.Errors.Add(ex.Message);
-                return Conflict(errors);
+                logger.LogError(ex, "Failed to save project stream because a constraint was violated");
+                throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to save project stream.");
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                var message = $"Failed to create project '{projectModel.Name}'";
+                logger.LogError(ex, message);
+                throw new ApiException(message, StatusCodes.Status500InternalServerError);
             }
 
-            return Ok(new ProjectResponseModel
+            return new ApiResponse("Successfully created new project", new ProjectResponseModel
             {
                 ProjectId = project.ProjectId,
                 Name = project.Name,
@@ -401,7 +405,7 @@ namespace Ranger.Services.Projects
                 TestApiKeyPrefix = project.TestApiKeyPrefix,
                 Enabled = project.Enabled,
                 Version = 0
-            });
+            }, StatusCodes.Status201Created);
         }
     }
 }

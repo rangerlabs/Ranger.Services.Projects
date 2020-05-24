@@ -5,12 +5,12 @@ namespace Ranger.Services.Projects
     [MessageNamespace("projects")]
     public class InitializeTenant : ICommand
     {
-        public string DatabaseUsername { get; }
+        public string TenantId { get; }
         public string DatabasePassword { get; }
 
-        public InitializeTenant(string databaseUsername, string databasePassword)
+        public InitializeTenant(string tenantId, string databasePassword)
         {
-            this.DatabaseUsername = databaseUsername;
+            this.TenantId = tenantId;
             this.DatabasePassword = databasePassword;
         }
     }

@@ -1,4 +1,5 @@
 using System;
+using AutoWrapper.Wrappers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,40 +11,28 @@ namespace Ranger.Services.Projects
 {
     public class TenantServiceDbContext
     {
-        private readonly ITenantsClient tenantsClient;
+        private readonly TenantsHttpClient tenantsClient;
         private readonly ILogger<TenantServiceDbContext> logger;
         private readonly CloudSqlOptions cloudSqlOptions;
 
-        public TenantServiceDbContext(ITenantsClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILogger<TenantServiceDbContext> logger)
+        public TenantServiceDbContext(TenantsHttpClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILogger<TenantServiceDbContext> logger)
         {
             this.cloudSqlOptions = cloudSqlOptions;
             this.logger = logger;
             this.tenantsClient = tenantsClient;
         }
 
-
-        public (DbContextOptions<T> options, ContextTenant contextTenant) GetDbContextOptions<T>(string tenant)
+        public (DbContextOptions<T> options, ContextTenant contextTenant) GetDbContextOptions<T>(string tenantId)
             where T : DbContext
         {
-            ContextTenant contextTenant = null;
-            try
-            {
-                contextTenant = this.tenantsClient.GetTenantAsync<ContextTenant>(tenant).Result;
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "An exception occurred retrieving the ContextTenant object. Cannot construct the tenant specific repository.");
-                throw;
-            }
-
+            var apiResponse = tenantsClient.GetTenantByIdAsync<ContextTenant>(tenantId).Result;
             NpgsqlConnectionStringBuilder connectionBuilder = new NpgsqlConnectionStringBuilder(cloudSqlOptions.ConnectionString);
-            connectionBuilder.Username = contextTenant.DatabaseUsername;
-            connectionBuilder.Password = contextTenant.DatabasePassword;
+            connectionBuilder.Username = tenantId;
+            connectionBuilder.Password = apiResponse.Result.DatabasePassword;
 
             var options = new DbContextOptionsBuilder<T>();
             options.UseNpgsql(connectionBuilder.ToString());
-            return (options.Options, contextTenant);
+            return (options.Options, apiResponse.Result);
         }
-
     }
 }

@@ -8,7 +8,8 @@ namespace Ranger.Services.Projects.Data
     public class ProjectStream : IEventStreamDbSet
     {
         [Required]
-        public string DatabaseUsername { get; set; }
+        [StringLength(36)]
+        public string TenantId { get; set; }
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }

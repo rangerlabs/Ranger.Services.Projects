@@ -27,7 +27,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new System.ArgumentException($"{nameof(email)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(email)} was null or whitespace");
             }
             return await this.context.ProjectUsers.Where(_ => _.Email == email).Select(_ => _.ProjectId).ToListAsync();
         }
@@ -36,7 +36,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
             return await this.context.ProjectUsers.Where(_ => _.UserId == userId).Select(_ => _.ProjectId).ToListAsync();
         }
@@ -45,7 +45,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new System.ArgumentException($"{nameof(email)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(email)} was null or whitespace");
             }
 
             return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.Email == email);
@@ -55,7 +55,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
 
             return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.UserId == userId);
@@ -65,23 +65,23 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new System.ArgumentException($"{nameof(email)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(email)} was null or whitespace");
             }
             if (projectIds is null)
             {
-                throw new System.ArgumentException($"{nameof(projectIds)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(projectIds)} was null or whitespace");
             }
             if (projectIds.Count() == 0)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(projectIds)} contained no projectIds.");
+                throw new ArgumentOutOfRangeException($"{nameof(projectIds)} contained no projectIds");
             }
             if (string.IsNullOrWhiteSpace(commandingUserEmail))
             {
-                throw new System.ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace");
             }
 
             var projectUsersToAdd = new List<ProjectUser>();
@@ -92,7 +92,7 @@ namespace Ranger.Services.Projects.Data
                 {
                     var projectUser = new ProjectUser
                     {
-                        DatabaseUsername = this.contextTenant.DatabaseUsername,
+                        TenantId = this.contextTenant.TenantId,
                         ProjectId = projectId,
                         UserId = userId,
                         Email = email,
@@ -103,7 +103,7 @@ namespace Ranger.Services.Projects.Data
                 }
                 catch (FormatException ex)
                 {
-                    logger.LogWarning(ex, $"The Project Id {projectId} is not a valid format.");
+                    logger.LogWarning(ex, $"The Project Id {projectId} is not a valid format");
                     invalidProjects.Add(projectId);
                 }
 
@@ -118,19 +118,19 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
             if (projectIds is null)
             {
-                throw new System.ArgumentException($"{nameof(projectIds)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(projectIds)} was null or whitespace");
             }
             if (projectIds.Count() == 0)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(projectIds)} contained no projectIds.");
+                throw new ArgumentOutOfRangeException($"{nameof(projectIds)} contained no projectIds");
             }
             if (string.IsNullOrWhiteSpace(commandingUserEmail))
             {
-                throw new System.ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace.");
+                throw new System.ArgumentException($"{nameof(commandingUserEmail)} was null or whitespace");
             }
 
             var guidProjectIds = new List<Guid>();
@@ -143,7 +143,7 @@ namespace Ranger.Services.Projects.Data
                 }
                 catch (FormatException ex)
                 {
-                    logger.LogWarning(ex, $"The Project Id {projectId} is not a valid format.");
+                    logger.LogWarning(ex, $"The Project Id {projectId} is not a valid format");
                     invalidProjects.Add(projectId);
                 }
             }

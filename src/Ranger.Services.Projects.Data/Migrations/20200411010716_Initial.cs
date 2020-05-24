@@ -28,7 +28,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                 {
                     id = table.Column<int>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    database_username = table.Column<string>(nullable: false),
+                    tenant_id = table.Column<string>(maxLength: 36, nullable: false),
                     stream_id = table.Column<Guid>(nullable: false),
                     version = table.Column<int>(nullable: false),
                     data = table.Column<string>(type: "jsonb", nullable: false),
@@ -46,7 +46,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                 columns: table => new
                 {
                     project_id = table.Column<Guid>(nullable: false),
-                    database_username = table.Column<string>(nullable: false),
+                    tenant_id = table.Column<string>(maxLength: 36, nullable: false),
                     hashed_live_api_key = table.Column<string>(nullable: false),
                     hashed_test_api_key = table.Column<string>(nullable: false),
                     name = table.Column<string>(maxLength: 140, nullable: false)
@@ -63,7 +63,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     id = table.Column<int>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     project_id = table.Column<Guid>(nullable: false),
-                    database_username = table.Column<string>(nullable: false),
+                    tenant_id = table.Column<string>(nullable: false),
                     user_id = table.Column<string>(nullable: false),
                     email = table.Column<string>(nullable: false),
                     inserted_at = table.Column<DateTime>(nullable: false),
@@ -75,21 +75,21 @@ namespace Ranger.Services.Projects.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_unique_constraints_database_username_hashed_live_ap~",
+                name: "IX_project_unique_constraints_tenant_id_hashed_live_api_key",
                 table: "project_unique_constraints",
-                columns: new[] { "database_username", "hashed_live_api_key" },
+                columns: new[] { "tenant_id", "hashed_live_api_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_unique_constraints_database_username_hashed_test_ap~",
+                name: "IX_project_unique_constraints_tenant_id_hashed_test_api_key",
                 table: "project_unique_constraints",
-                columns: new[] { "database_username", "hashed_test_api_key" },
+                columns: new[] { "tenant_id", "hashed_test_api_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_project_unique_constraints_database_username_name",
+                name: "IX_project_unique_constraints_tenant_id_name",
                 table: "project_unique_constraints",
-                columns: new[] { "database_username", "name" },
+                columns: new[] { "tenant_id", "name" },
                 unique: true);
 
             migrationBuilder.CreateIndex(

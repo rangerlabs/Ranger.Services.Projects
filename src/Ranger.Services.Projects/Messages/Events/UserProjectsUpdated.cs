@@ -17,11 +17,11 @@ namespace Ranger.Services.Projects
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new ArgumentException($"{nameof(userId)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userId)} was null or whitespace");
             }
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new ArgumentException($"{nameof(email)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(email)} was null or whitespace");
             }
 
             this.UserId = userId;

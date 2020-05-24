@@ -16,16 +16,16 @@ namespace Ranger.Services.Projects.Data
             this.context = context;
         }
 
-        public async Task<string> GetDatabaseUsernameByApiKeyAsync(string apiKey)
+        public async Task<string> GetTenantIdByApiKeyAsync(string apiKey)
         {
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
             if (apiKey.StartsWith("live."))
             {
-                return await context.ProjectUniqueConstraints.Where(_ => _.HashedLiveApiKey == hashedApiKey).Select(_ => _.DatabaseUsername).SingleOrDefaultAsync();
+                return await context.ProjectUniqueConstraints.Where(_ => _.HashedLiveApiKey == hashedApiKey).Select(_ => _.TenantId).SingleOrDefaultAsync();
             }
             else if (apiKey.StartsWith("test."))
             {
-                return await context.ProjectUniqueConstraints.Where(_ => _.HashedTestApiKey == hashedApiKey).Select(_ => _.DatabaseUsername).SingleOrDefaultAsync();
+                return await context.ProjectUniqueConstraints.Where(_ => _.HashedTestApiKey == hashedApiKey).Select(_ => _.TenantId).SingleOrDefaultAsync();
             }
             else
             {

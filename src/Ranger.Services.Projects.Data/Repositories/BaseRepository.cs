@@ -30,7 +30,7 @@ namespace Ranger.Services.Projects.Data
             }
 
             NpgsqlConnectionStringBuilder connectionBuilder = new NpgsqlConnectionStringBuilder(cloudSqlOptions.ConnectionString);
-            connectionBuilder.Username = contextTenant.DatabaseUsername;
+            connectionBuilder.Username = contextTenant.TenantId;
             connectionBuilder.Password = contextTenant.DatabasePassword;
 
             var options = new DbContextOptionsBuilder<ProjectsDbContext>();

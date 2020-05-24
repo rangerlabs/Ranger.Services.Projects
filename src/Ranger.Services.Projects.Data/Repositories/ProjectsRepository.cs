@@ -31,14 +31,16 @@ namespace Ranger.Services.Projects.Data
 
         public async Task AddProjectAsync(string userEmail, string eventName, Project project)
         {
+            var now = DateTime.UtcNow;
+            project.CreatedOn = now;
             var newProjectStream = new ProjectStream()
             {
-                DatabaseUsername = this.contextTenant.DatabaseUsername,
+                TenantId = this.contextTenant.TenantId,
                 StreamId = Guid.NewGuid(),
                 Version = 0,
                 Data = JsonConvert.SerializeObject(project),
                 Event = eventName,
-                InsertedAt = DateTime.UtcNow,
+                InsertedAt = now,
                 InsertedBy = userEmail,
             };
             this.AddProjectUniqueConstraints(newProjectStream, project);
@@ -57,7 +59,7 @@ namespace Ranger.Services.Projects.Data
                     {
                         case ProjectJsonbConstraintNames.Name:
                             {
-                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                                throw new EventStreamDataConstraintException("The project name is in use by another project");
                             }
                         default:
                             {
@@ -81,7 +83,7 @@ namespace Ranger.Services.Projects.Data
                 WITH not_deleted AS(
 	                SELECT 
 	                	ps.id,
-	                	ps.database_username,
+	                	ps.tenant_id,
 	                	ps.stream_id,
 	                	ps.version,
 	                	ps.data,
@@ -93,7 +95,7 @@ namespace Ranger.Services.Projects.Data
                 )
                 SELECT DISTINCT ON (ps.stream_id)
                 	ps.id,
-                	ps.database_username,
+                	ps.tenant_id,
                 	ps.stream_id,
                 	ps.version,
                 	ps.data,
@@ -112,14 +114,19 @@ namespace Ranger.Services.Projects.Data
             return projects;
         }
 
-        public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
+        public async Task<(Project project, int version)> GetProjectByName(string projectName)
         {
-            var projectStreams = await this.context.ProjectStreams.
-            FromSqlRaw(@"
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                throw new ArgumentException("message", nameof(projectName));
+            }
+
+            var projectStream = await this.context.ProjectStreams.
+            FromSqlRaw($@"
                 WITH not_deleted AS(
 	                SELECT 
             	    	ps.id,
-            	    	ps.database_username,
+            	    	ps.tenant_id,
             	    	ps.stream_id,
             	    	ps.version,
             	    	ps.data,
@@ -131,7 +138,39 @@ namespace Ranger.Services.Projects.Data
                )
                SELECT DISTINCT ON (ps.stream_id) 
               		ps.id,
-              		ps.database_username,
+              		ps.tenant_id,
+              		ps.stream_id,
+              		ps.version,
+            		ps.data,
+            		ps.event,
+            		ps.inserted_at,
+            		ps.inserted_by
+                FROM not_deleted ps
+                WHERE (ps.data ->> 'Name') = {projectName}
+                ORDER BY ps.stream_id, ps.version DESC;").SingleAsync();
+            return (JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version);
+        }
+
+        public async Task<IEnumerable<(Project project, int version)>> GetAllProjects()
+        {
+            var projectStreams = await this.context.ProjectStreams.
+            FromSqlRaw(@"
+                WITH not_deleted AS(
+	                SELECT 
+            	    	ps.id,
+            	    	ps.tenant_id,
+            	    	ps.stream_id,
+            	    	ps.version,
+            	    	ps.data,
+            	    	ps.event,
+            	    	ps.inserted_at,
+            	    	ps.inserted_by
+            	    FROM project_streams ps, project_unique_constraints puc
+            	    WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+               )
+               SELECT DISTINCT ON (ps.stream_id) 
+              		ps.id,
+              		ps.tenant_id,
               		ps.stream_id,
               		ps.version,
             		ps.data,
@@ -163,7 +202,7 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new ArgumentException($"{nameof(apiKey)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(apiKey)} was null or whitespace");
             }
 
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
@@ -180,32 +219,17 @@ namespace Ranger.Services.Projects.Data
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
 
-        public async Task RemoveProjectAsync(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException($"{nameof(name)} was null or whitespace.");
-            }
-
-            this.context.ProjectStreams.RemoveRange(
-                await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'Name' = {name} ORDER BY version DESC").ToListAsync()
-            );
-        }
-
-        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, string environment, int version, Guid projectId)
+        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, EnvironmentEnum environment, int version, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
-            }
-            if (string.IsNullOrWhiteSpace(environment))
-            {
-                throw new ArgumentException($"{nameof(environment)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
-            if (environment != "live" || environment != "test")
+            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
+            var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
+            if (!(currentProjectStream is null))
             {
-                var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
                 ValidateRequestVersionIncremented(version, currentProjectStream);
 
                 var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
@@ -213,7 +237,7 @@ namespace Ranger.Services.Projects.Data
                 var newApiKeyGuid = Guid.NewGuid().ToString();
                 string resultKey = "";
 
-                if (environment == "live")
+                if (environmentString == "live")
                 {
                     resultKey = "live." + newApiKeyGuid;
                     var newApiKeyPrefix = "live." + newApiKeyGuid.Substring(0, 6);
@@ -234,7 +258,7 @@ namespace Ranger.Services.Projects.Data
 
                 var updatedProjectStream = new ProjectStream()
                 {
-                    DatabaseUsername = this.contextTenant.DatabaseUsername,
+                    TenantId = this.contextTenant.TenantId,
                     StreamId = currentProjectStream.StreamId,
                     Version = version,
                     Data = JsonConvert.SerializeObject(currentProject),
@@ -259,7 +283,7 @@ namespace Ranger.Services.Projects.Data
                         {
                             case ProjectJsonbConstraintNames.ProjectId_Version:
                                 {
-                                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                                    throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
                                 }
                             default:
                                 {
@@ -272,14 +296,17 @@ namespace Ranger.Services.Projects.Data
 
                 return (currentProject, resultKey);
             }
-            throw new ArgumentException($"'{environment}' is not a valid environment name. Expected 'live' or 'test'.");
+            else
+            {
+                throw new RangerException($"No project was found for project id '{projectId}'");
+            }
         }
 
         public async Task SoftDeleteAsync(string userEmail, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
@@ -295,7 +322,7 @@ namespace Ranger.Services.Projects.Data
                 {
                     var updatedProjectStream = new ProjectStream()
                     {
-                        DatabaseUsername = this.contextTenant.DatabaseUsername,
+                        TenantId = this.contextTenant.TenantId,
                         StreamId = currentProjectStream.StreamId,
                         Version = currentProjectStream.Version + 1,
                         Data = JsonConvert.SerializeObject(currentProject),
@@ -309,7 +336,7 @@ namespace Ranger.Services.Projects.Data
                     {
                         await this.context.SaveChangesAsync();
                         deleted = true;
-                        logger.LogInformation($"Project {currentProject.Name} deleted.");
+                        logger.LogInformation($"Project {currentProject.Name} deleted");
                     }
                     catch (DbUpdateException ex)
                     {
@@ -321,7 +348,7 @@ namespace Ranger.Services.Projects.Data
                             {
                                 case ProjectJsonbConstraintNames.ProjectId_Version:
                                     {
-                                        logger.LogError($"The update version number was outdated. The current and updated stream versions are '{currentProjectStream.Version + 1}'.");
+                                        logger.LogError($"The update version number was outdated. The current and updated stream versions are '{currentProjectStream.Version + 1}'");
                                         maxConcurrencyAttempts--;
                                         continue;
                                     }
@@ -332,12 +359,12 @@ namespace Ranger.Services.Projects.Data
                 }
                 if (!deleted)
                 {
-                    throw new ConcurrencyException($"After '{maxConcurrencyAttempts}' attempts, the version was still outdated. Too many updates have been applied in a short period of time. The current stream version is '{currentProjectStream.Version + 1}'. The project was not deleted.");
+                    throw new ConcurrencyException($"After '{maxConcurrencyAttempts}' attempts, the version was still outdated. Too many updates have been applied in a short period of time. The current stream version is '{currentProjectStream.Version + 1}'. The project was not deleted");
                 }
             }
             else
             {
-                throw new ArgumentException($"No project was found with id '{projectId}'.");
+                throw new RangerException($"No project was found for project id '{projectId}'");
             }
         }
 
@@ -345,17 +372,17 @@ namespace Ranger.Services.Projects.Data
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
-                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
             if (string.IsNullOrWhiteSpace(eventName))
             {
-                throw new ArgumentException($"{nameof(eventName)} was null or whitespace.");
+                throw new ArgumentException($"{nameof(eventName)} was null or whitespace");
             }
 
             if (project is null)
             {
-                throw new ArgumentException($"{nameof(project)} was null.");
+                throw new ArgumentException($"{nameof(project)} was null");
             }
 
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(project.ProjectId);
@@ -378,7 +405,7 @@ namespace Ranger.Services.Projects.Data
 
             var updatedProjectStream = new ProjectStream()
             {
-                DatabaseUsername = this.contextTenant.DatabaseUsername,
+                TenantId = this.contextTenant.TenantId,
                 StreamId = currentProjectStream.StreamId,
                 Version = version,
                 Data = serializedNewProjectData,
@@ -403,11 +430,11 @@ namespace Ranger.Services.Projects.Data
                     {
                         case ProjectJsonbConstraintNames.Name:
                             {
-                                throw new EventStreamDataConstraintException("The project name is in use by another project.");
+                                throw new EventStreamDataConstraintException("The project name is in use by another project");
                             }
                         case ProjectJsonbConstraintNames.ProjectId_Version:
                             {
-                                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
                             }
                         default:
                             {
@@ -436,7 +463,7 @@ namespace Ranger.Services.Projects.Data
             var requestJObject = JsonConvert.DeserializeObject<JObject>(serializedNewProjectData);
             if (JToken.DeepEquals(currentJObject, requestJObject))
             {
-                throw new NoOpException("No changes were made from the previous version.");
+                throw new NoOpException("No changes were made from the previous version");
             }
         }
 
@@ -444,11 +471,11 @@ namespace Ranger.Services.Projects.Data
         {
             if (version - currentProjectStream.Version > 1)
             {
-                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                throw new ConcurrencyException($"The update version number was too high. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
             }
             if (version - currentProjectStream.Version <= 0)
             {
-                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'.");
+                throw new ConcurrencyException($"The update version number was outdated. The current stream version is '{currentProjectStream.Version}' and the request update version was '{version}'");
             }
         }
 
@@ -467,7 +494,7 @@ namespace Ranger.Services.Projects.Data
             var newProjectUniqueConstraint = new ProjectUniqueConstraint
             {
                 ProjectId = project.ProjectId,
-                DatabaseUsername = contextTenant.DatabaseUsername,
+                TenantId = contextTenant.TenantId,
                 Name = project.Name.ToLowerInvariant(),
                 HashedLiveApiKey = project.HashedLiveApiKey,
                 HashedTestApiKey = project.HashedTestApiKey
