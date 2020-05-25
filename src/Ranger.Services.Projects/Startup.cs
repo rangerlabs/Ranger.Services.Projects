@@ -44,6 +44,7 @@ namespace Ranger.Services.Projects
                     options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
+            var identityAuthority = configuration["httpClient:identityAuthority"];
             services.AddAutoWrapper();
             services.AddSwaggerGen("Projects API", "v1");
             services.AddApiVersioning(o => o.ApiVersionReader = new HeaderApiVersionReader("api-version"));
@@ -56,10 +57,9 @@ namespace Ranger.Services.Projects
             );
 
             services.AddPollyPolicyRegistry();
-            services.AddTenantsHttpClient("http://tenants:8082", "tenantsApi", "cKprgh9wYKWcsm");
-            services.AddIdentityHttpClient("http://identity:5000", "IdentityServerApi", "89pCcXHuDYTXY");
-            services.AddSubscriptionsHttpClient("http://subscriptions:8089", "subscriptionsApi", "4T3SXqXaD6GyGHn4RY");
-
+            services.AddTenantsHttpClient("http://tenants:8082", identityAuthority, "tenantsApi", "cKprgh9wYKWcsm");
+            services.AddIdentityHttpClient("http://identity:5000", identityAuthority, "IdentityServerApi", "89pCcXHuDYTXY");
+            services.AddSubscriptionsHttpClient("http://subscriptions:8089", identityAuthority, "subscriptionsApi", "4T3SXqXaD6GyGHn4RY");
 
             services.AddTransient<IProjectsDbContextInitializer, ProjectsDbContextInitializer>();
             services.AddTransient<ILoginRoleRepository<ProjectsDbContext>, LoginRoleRepository<ProjectsDbContext>>();
