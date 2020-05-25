@@ -74,7 +74,9 @@ namespace Ranger.Services.Projects
                 });
 
             services.AddDataProtection()
+                .SetApplicationName("Projects")
                 .ProtectKeysWithCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
+                .UnprotectKeysWithAnyCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
                 .PersistKeysToDbContext<ProjectsDbContext>();
 
             services.AddLiveHealthCheck();
