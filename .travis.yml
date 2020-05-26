@@ -6,7 +6,6 @@ services:
 branches:
     only:
         - master
-        - dev
 before_script:
     - chmod -R a+x scripts
 script:
