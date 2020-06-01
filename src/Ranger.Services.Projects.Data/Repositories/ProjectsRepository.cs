@@ -104,7 +104,7 @@ namespace Ranger.Services.Projects.Data
                 	ps.inserted_by
                 FROM not_deleted ps, project_users pu
                 WHERE (ps.data ->> 'ProjectId') = pu.project_id::text
-                AND email = {email} 
+                AND email = {email}
                 ORDER BY ps.stream_id, ps.version DESC;").ToListAsync();
             List<(Project project, int version)> projects = new List<(Project project, int version)>();
             foreach (var projectStream in projectStreams)
@@ -146,7 +146,7 @@ namespace Ranger.Services.Projects.Data
             		ps.inserted_at,
             		ps.inserted_by
                 FROM not_deleted ps
-                WHERE (ps.data ->> 'Name') = {projectName}
+                WHERE (ps.data ->> 'Name') = '{projectName}'
                 ORDER BY ps.stream_id, ps.version DESC;").SingleAsync();
             return (JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version);
         }
