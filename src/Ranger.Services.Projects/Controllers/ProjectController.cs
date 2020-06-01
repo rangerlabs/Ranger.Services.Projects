@@ -88,25 +88,29 @@ namespace Ranger.Services.Projects
             [FromQuery] string email,
             [FromQuery] string apiKey)
         {
-            if ((string.IsNullOrWhiteSpace(projectName) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(apiKey)) || (!string.IsNullOrWhiteSpace(projectName) && !string.IsNullOrWhiteSpace(email) || !string.IsNullOrWhiteSpace(apiKey)))
-            {
-                var projects = await projectsService.GetAllProjects(tenantId);
-                return new ApiResponse("Successfully retrieved projects", projects);
-            }
             try
             {
-                if (!string.IsNullOrWhiteSpace(projectName))
+                if (string.IsNullOrWhiteSpace(projectName) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(apiKey))
                 {
+                    logger.LogDebug("No query parameter present, retrieving all projects");
+                    var projects = await projectsService.GetAllProjects(tenantId);
+                    return new ApiResponse("Successfully retrieved projects", projects);
+                }
+                else if (!string.IsNullOrWhiteSpace(projectName))
+                {
+                    logger.LogDebug("Retrieving projects for 'projectName' query parameter");
                     var project = await projectsService.GetProjectByName(tenantId, projectName);
                     return new ApiResponse("Successfully retrieved projects", project);
                 }
                 else if (!string.IsNullOrWhiteSpace(email))
                 {
+                    logger.LogDebug("Retrieving projects for 'email' query parameter");
                     var projects = await projectsService.GetProjectsForUser(tenantId, email);
                     return new ApiResponse("Successfully retrieved projects", projects);
                 }
                 else
                 {
+                    logger.LogDebug("Retrieving projects for 'apiKey' query parameter");
                     if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
                     {
                         var project = await projectsService.GetProjectByApiKey(tenantId, apiKey);
