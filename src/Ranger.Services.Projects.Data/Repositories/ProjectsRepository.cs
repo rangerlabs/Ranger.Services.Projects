@@ -393,6 +393,7 @@ namespace Ranger.Services.Projects.Data
             project.HashedTestApiKey = outdatedProject.HashedTestApiKey;
             project.LiveApiKeyPrefix = outdatedProject.LiveApiKeyPrefix;
             project.TestApiKeyPrefix = outdatedProject.TestApiKeyPrefix;
+            project.CreatedOn = outdatedProject.CreatedOn;
             project.Deleted = false;
 
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
