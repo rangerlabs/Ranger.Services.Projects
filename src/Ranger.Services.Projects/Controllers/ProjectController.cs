@@ -64,7 +64,7 @@ namespace Ranger.Services.Projects
                 var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
                 if (String.IsNullOrWhiteSpace(tenantId))
                 {
-                    throw new ApiException("No tenant was found for the specified tenant id", StatusCodes.Status404NotFound);
+                    throw new ApiException("No tenant was found for the specified API key", StatusCodes.Status404NotFound);
                 }
                 return new ApiResponse("Successfully retrieved tenant id", tenantId);
             }
