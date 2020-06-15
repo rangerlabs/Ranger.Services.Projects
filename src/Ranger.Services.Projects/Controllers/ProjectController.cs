@@ -59,7 +59,7 @@ namespace Ranger.Services.Projects
         [HttpGet("projects/{apikey}/tenant-id")]
         public async Task<ApiResponse> GetTenantIdByApiKey(string apiKey)
         {
-            if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
+            if (apiKey.StartsWith("live.") || apiKey.StartsWith("test.") || apiKey.StartsWith("proj."))
             {
                 var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
                 if (String.IsNullOrWhiteSpace(tenantId))
@@ -111,7 +111,7 @@ namespace Ranger.Services.Projects
                 else
                 {
                     logger.LogDebug("Retrieving projects for 'apiKey' query parameter");
-                    if (apiKey.StartsWith("live.") || apiKey.StartsWith("test."))
+                    if (apiKey.StartsWith("live.") || apiKey.StartsWith("test.") || apiKey.StartsWith("proj."))
                     {
                         var project = await projectsService.GetProjectByApiKey(tenantId, apiKey);
                         if (project is null)
@@ -138,29 +138,31 @@ namespace Ranger.Services.Projects
         ///</summary>
         ///<param name="tenantId">The tenant id the project API key is associated with</param>
         ///<param name="projectId">The project id for the API key to reset</param>
-        ///<param name="environment">The environment for the API key to reset - "live" or "test"</param>
+        ///<param name="purpose">The purpose of the API key to reset - "live", "test", or "proj"</param>
         ///<param name="apiKeyResetModel">The model necessary to verify the key reset</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [HttpPut("/projects/{tenantId}/{projectId}/{environment}/reset")]
-        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, EnvironmentEnum environment, ApiKeyResetModel apiKeyResetModel)
+        [HttpPut("/projects/{tenantId}/{projectId}/{purpose}/reset")]
+        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, EnvironmentEnum purpose, ApiKeyResetModel apiKeyResetModel)
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
+            var purposeString = Enum.GetName(typeof(EnvironmentEnum), purpose).ToLowerInvariant();
             try
             {
-                var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, environment, apiKeyResetModel.Version, projectId);
+                var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, purpose, apiKeyResetModel.Version, projectId);
                 return new ApiResponse("Successfully reset api key", new ProjectResponseModel
                 {
                     ProjectId = project.ProjectId,
                     Name = project.Name,
                     Description = project.Description,
-                    LiveApiKey = environmentString == "live" ? newApiKey : "",
-                    TestApiKey = environmentString == "test" ? newApiKey : "",
+                    LiveApiKey = purposeString == "live" ? newApiKey : "",
+                    TestApiKey = purposeString == "test" ? newApiKey : "",
+                    ProjectApiKey = purposeString == "proj" ? newApiKey : "",
                     LiveApiKeyPrefix = project.LiveApiKeyPrefix,
                     TestApiKeyPrefix = project.TestApiKeyPrefix,
+                    ProjectApiKeyPrefix = project.ProjectApiKeyPrefix,
                     Enabled = project.Enabled,
                     Version = apiKeyResetModel.Version
                 });
@@ -255,7 +257,8 @@ namespace Ranger.Services.Projects
                 Enabled = updatedProject.Enabled,
                 Version = projectModel.Version,
                 LiveApiKeyPrefix = updatedProject.LiveApiKeyPrefix,
-                TestApiKeyPrefix = updatedProject.TestApiKeyPrefix
+                TestApiKeyPrefix = updatedProject.TestApiKeyPrefix,
+                ProjectApiKeyPrefix = updatedProject.ProjectApiKeyPrefix
             });
         }
 
@@ -321,55 +324,21 @@ namespace Ranger.Services.Projects
 
         private async Task<ApiResponse> AddNewProject(string domain, PostProjectModel projectModel, IProjectsRepository repo)
         {
-            string liveApiKeyGuid;
-            string testApiKeyGuid;
-            string liveApiKeyPrefix;
-            string testApiKeyPrefix;
+            var liveApiKeyGuid = Guid.NewGuid().ToString("N");
+            var testApiKeyGuid = Guid.NewGuid().ToString("N");
+            var projectApiKeyGuid = Guid.NewGuid().ToString("N");
 
-            var adequatelyDifferentPrefixes = false;
-            do
-            {
-                liveApiKeyGuid = Guid.NewGuid().ToString();
-                testApiKeyGuid = Guid.NewGuid().ToString();
-                liveApiKeyPrefix = liveApiKeyGuid.Substring(0, 6);
-                testApiKeyPrefix = testApiKeyGuid.Substring(0, 6);
-                liveApiKeyGuid = "live." + liveApiKeyGuid;
-                testApiKeyGuid = "test." + testApiKeyGuid;
-                var liveApiKeyPrefixDistinct = liveApiKeyPrefix.Distinct();
-                var testApiKeyPrefixDistinct = testApiKeyPrefix.Distinct();
+            var liveApiKeyPrefix = liveApiKeyGuid.Substring(0, 6);
+            var testApiKeyPrefix = testApiKeyGuid.Substring(0, 6);
+            var projectApiKeyPrefix = projectApiKeyGuid.Substring(0, 6);
 
-                IEnumerable<char> shorterDistinctPrefix;
-                string longerPrefix;
-                if (liveApiKeyPrefixDistinct.Count() <= testApiKeyPrefixDistinct.Count())
-                {
-                    shorterDistinctPrefix = liveApiKeyPrefixDistinct;
-                    longerPrefix = testApiKeyPrefix;
-                }
-                else
-                {
-                    shorterDistinctPrefix = testApiKeyPrefixDistinct;
-                    longerPrefix = liveApiKeyPrefix;
-                }
-
-                int charDiffCount = 0;
-                foreach (var character in shorterDistinctPrefix)
-                {
-                    if (longerPrefix.Count(testChar => testChar != character) == longerPrefix.Count())
-                    {
-                        charDiffCount++;
-                        if (charDiffCount >= 2)
-                        {
-                            break;
-                        }
-                    }
-
-                }
-                adequatelyDifferentPrefixes = charDiffCount == 2;
-            }
-            while (!adequatelyDifferentPrefixes);
+            liveApiKeyGuid = "live." + liveApiKeyGuid;
+            testApiKeyGuid = "test." + testApiKeyGuid;
+            projectApiKeyGuid = "proj." + projectApiKeyGuid;
 
             var hashedLiveApiKey = Crypto.GenerateSHA512Hash(liveApiKeyGuid);
             var hashedTestApiKey = Crypto.GenerateSHA512Hash(testApiKeyGuid);
+            var hashedProjectApiKey = Crypto.GenerateSHA512Hash(projectApiKeyGuid);
 
             var project = new Project
             {
@@ -377,8 +346,10 @@ namespace Ranger.Services.Projects
                 Name = projectModel.Name,
                 HashedLiveApiKey = hashedLiveApiKey,
                 HashedTestApiKey = hashedTestApiKey,
+                HashedProjectApiKey = hashedProjectApiKey,
                 LiveApiKeyPrefix = "live." + liveApiKeyPrefix,
                 TestApiKeyPrefix = "test." + testApiKeyPrefix,
+                ProjectApiKeyPrefix = "proj." + projectApiKeyPrefix,
                 Enabled = projectModel.Enabled,
                 Description = projectModel.Description,
             };
@@ -405,8 +376,10 @@ namespace Ranger.Services.Projects
                 Description = project.Description,
                 LiveApiKey = liveApiKeyGuid,
                 TestApiKey = testApiKeyGuid,
+                ProjectApiKey = projectApiKeyGuid,
                 LiveApiKeyPrefix = project.LiveApiKeyPrefix,
                 TestApiKeyPrefix = project.TestApiKeyPrefix,
+                ProjectApiKeyPrefix = project.ProjectApiKeyPrefix,
                 Enabled = project.Enabled,
                 Version = 0
             }, StatusCodes.Status201Created);

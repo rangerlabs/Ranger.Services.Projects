@@ -16,7 +16,7 @@ namespace Ranger.Services.Projects.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
-                .HasAnnotation("ProductVersion", "3.1.1")
+                .HasAnnotation("ProductVersion", "3.1.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -99,6 +99,11 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasColumnName("hashed_live_api_key")
                         .HasColumnType("text");
 
+                    b.Property<string>("HashedProjectApiKey")
+                        .IsRequired()
+                        .HasColumnName("hashed_project_api_key")
+                        .HasColumnType("text");
+
                     b.Property<string>("HashedTestApiKey")
                         .IsRequired()
                         .HasColumnName("hashed_test_api_key")
@@ -120,6 +125,9 @@ namespace Ranger.Services.Projects.Data.Migrations
                         .HasName("pk_project_unique_constraints");
 
                     b.HasIndex("TenantId", "HashedLiveApiKey")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "HashedProjectApiKey")
                         .IsUnique();
 
                     b.HasIndex("TenantId", "HashedTestApiKey")

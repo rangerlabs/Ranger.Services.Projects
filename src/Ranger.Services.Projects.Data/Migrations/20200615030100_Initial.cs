@@ -49,6 +49,7 @@ namespace Ranger.Services.Projects.Data.Migrations
                     tenant_id = table.Column<string>(maxLength: 36, nullable: false),
                     hashed_live_api_key = table.Column<string>(nullable: false),
                     hashed_test_api_key = table.Column<string>(nullable: false),
+                    hashed_project_api_key = table.Column<string>(nullable: false),
                     name = table.Column<string>(maxLength: 140, nullable: false)
                 },
                 constraints: table =>
@@ -78,6 +79,12 @@ namespace Ranger.Services.Projects.Data.Migrations
                 name: "IX_project_unique_constraints_tenant_id_hashed_live_api_key",
                 table: "project_unique_constraints",
                 columns: new[] { "tenant_id", "hashed_live_api_key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_project_unique_constraints_tenant_id_hashed_project_api_key",
+                table: "project_unique_constraints",
+                columns: new[] { "tenant_id", "hashed_project_api_key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(

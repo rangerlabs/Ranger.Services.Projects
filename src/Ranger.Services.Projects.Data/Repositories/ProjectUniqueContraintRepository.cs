@@ -27,6 +27,10 @@ namespace Ranger.Services.Projects.Data
             {
                 return await context.ProjectUniqueConstraints.Where(_ => _.HashedTestApiKey == hashedApiKey).Select(_ => _.TenantId).SingleOrDefaultAsync();
             }
+            else if (apiKey.StartsWith("proj."))
+            {
+                return await context.ProjectUniqueConstraints.Where(_ => _.HashedProjectApiKey == hashedApiKey).Select(_ => _.TenantId).SingleOrDefaultAsync();
+            }
             else
             {
                 return null;

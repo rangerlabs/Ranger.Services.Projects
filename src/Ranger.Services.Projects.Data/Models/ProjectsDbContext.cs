@@ -64,6 +64,7 @@ namespace Ranger.Services.Projects.Data
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.TenantId, _.Name }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.TenantId, _.HashedLiveApiKey }).IsUnique();
             modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.TenantId, _.HashedTestApiKey }).IsUnique();
+            modelBuilder.Entity<ProjectUniqueConstraint>().HasIndex(_ => new { _.TenantId, _.HashedProjectApiKey }).IsUnique();
 
             modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.UserId }).IsUnique();
             modelBuilder.Entity<ProjectUser>().HasIndex(_ => new { _.ProjectId, _.Email }).IsUnique();

@@ -40,6 +40,7 @@ namespace Ranger.Services.Projects
                 ProjectId = _.project.ProjectId,
                 LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
                 TestApiKeyPrefix = _.project.TestApiKeyPrefix,
+                ProjectApiKeyPrefix = _.project.ProjectApiKeyPrefix,
                 Version = _.version
             });
         }
@@ -55,7 +56,6 @@ namespace Ranger.Services.Projects
             var projects = await GetAllProjects(tenantId);
             return projects.Where(_ => _.Name == name).SingleOrDefault();
         }
-
 
         public async Task<IEnumerable<ProjectResponseModel>> GetProjectsForUser(string tenantId, string email)
         {
@@ -82,6 +82,7 @@ namespace Ranger.Services.Projects
                 ProjectId = _.project.ProjectId,
                 LiveApiKeyPrefix = _.project.LiveApiKeyPrefix,
                 TestApiKeyPrefix = _.project.TestApiKeyPrefix,
+                ProjectApiKeyPrefix = _.project.ProjectApiKeyPrefix,
                 Version = _.version
             });
         }

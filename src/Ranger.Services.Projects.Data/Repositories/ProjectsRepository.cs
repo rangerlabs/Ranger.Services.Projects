@@ -212,9 +212,13 @@ namespace Ranger.Services.Projects.Data
             {
                 projectStream = await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'HashedLiveApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
             }
-            if (apiKey.StartsWith("test."))
+            else if (apiKey.StartsWith("test."))
             {
                 projectStream = await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'HashedTestApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
+            }
+            else if (apiKey.StartsWith("proj."))
+            {
+                projectStream = await this.context.ProjectStreams.FromSqlInterpolated($"SELECT * FROM project_streams WHERE data ->> 'HashedProjectApiKey' = {hashedApiKey} AND data ->> 'Deleted' = 'false' ORDER BY version DESC").FirstAsync();
             }
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
@@ -234,7 +238,7 @@ namespace Ranger.Services.Projects.Data
 
                 var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
                 var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.ProjectId);
-                var newApiKeyGuid = Guid.NewGuid().ToString();
+                var newApiKeyGuid = Guid.NewGuid().ToString("N");
                 string resultKey = "";
 
                 if (environmentString == "live")
@@ -246,7 +250,7 @@ namespace Ranger.Services.Projects.Data
                     currentProject.HashedLiveApiKey = hashedApiKeyGuid;
                     uniqueConstraint.HashedLiveApiKey = hashedApiKeyGuid;
                 }
-                else
+                else if (environmentString == "test")
                 {
                     resultKey = "test." + newApiKeyGuid;
                     var newApiKeyPrefix = "test." + newApiKeyGuid.Substring(0, 6);
@@ -254,6 +258,15 @@ namespace Ranger.Services.Projects.Data
                     currentProject.TestApiKeyPrefix = newApiKeyPrefix;
                     currentProject.HashedTestApiKey = hashedApiKeyGuid;
                     uniqueConstraint.HashedTestApiKey = hashedApiKeyGuid;
+                }
+                else if (environmentString == "proj")
+                {
+                    resultKey = "proj." + newApiKeyGuid;
+                    var newApiKeyPrefix = "proj." + newApiKeyGuid.Substring(0, 6);
+                    var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
+                    currentProject.ProjectApiKeyPrefix = newApiKeyPrefix;
+                    currentProject.HashedProjectApiKey = hashedApiKeyGuid;
+                    uniqueConstraint.HashedProjectApiKey = hashedApiKeyGuid;
                 }
 
                 var updatedProjectStream = new ProjectStream()
@@ -391,8 +404,10 @@ namespace Ranger.Services.Projects.Data
             var outdatedProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
             project.HashedLiveApiKey = outdatedProject.HashedLiveApiKey;
             project.HashedTestApiKey = outdatedProject.HashedTestApiKey;
+            project.HashedProjectApiKey = outdatedProject.HashedProjectApiKey;
             project.LiveApiKeyPrefix = outdatedProject.LiveApiKeyPrefix;
             project.TestApiKeyPrefix = outdatedProject.TestApiKeyPrefix;
+            project.ProjectApiKeyPrefix = outdatedProject.ProjectApiKeyPrefix;
             project.CreatedOn = outdatedProject.CreatedOn;
             project.Deleted = false;
 
@@ -403,6 +418,7 @@ namespace Ranger.Services.Projects.Data
             uniqueConstraint.Name = project.Name.ToLowerInvariant();
             uniqueConstraint.HashedLiveApiKey = project.HashedLiveApiKey;
             uniqueConstraint.HashedTestApiKey = project.HashedTestApiKey;
+            uniqueConstraint.HashedProjectApiKey = project.HashedProjectApiKey;
 
             var updatedProjectStream = new ProjectStream()
             {
@@ -498,7 +514,8 @@ namespace Ranger.Services.Projects.Data
                 TenantId = contextTenant.TenantId,
                 Name = project.Name.ToLowerInvariant(),
                 HashedLiveApiKey = project.HashedLiveApiKey,
-                HashedTestApiKey = project.HashedTestApiKey
+                HashedTestApiKey = project.HashedTestApiKey,
+                HashedProjectApiKey = project.HashedProjectApiKey
             };
             this.context.ProjectUniqueConstraints.Add(newProjectUniqueConstraint);
         }

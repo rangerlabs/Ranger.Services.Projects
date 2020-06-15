@@ -24,6 +24,9 @@ namespace Ranger.Services.Projects.Data
         public string HashedTestApiKey { get; set; }
 
         [Required]
+        public string HashedProjectApiKey { get; set; }
+
+        [Required]
         [StringLength(140)]
         public string Name { get; set; }
     }

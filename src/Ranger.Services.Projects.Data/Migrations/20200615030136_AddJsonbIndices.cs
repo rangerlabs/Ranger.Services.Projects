@@ -12,6 +12,7 @@ namespace Ranger.Services.Projects.Data.Migrations
             migrationBuilder.Sql("CREATE INDEX idx_data_name ON project_streams (tenant_id, (data->>'Name'));");
             migrationBuilder.Sql("CREATE INDEX idx_data_hashedliveapikey ON project_streams (tenant_id, (data->>'HashedLiveApiKey'));");
             migrationBuilder.Sql("CREATE INDEX idx_data_hashedtestapikey ON project_streams (tenant_id, (data->>'HashedTestApiKey'));");
+            migrationBuilder.Sql("CREATE INDEX idx_data_hashedprojectapikey ON project_streams (tenant_id, (data->>'HashedProjectApiKey'));");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
@@ -20,6 +21,7 @@ namespace Ranger.Services.Projects.Data.Migrations
             migrationBuilder.Sql("DROP INDEX idx_data_name");
             migrationBuilder.Sql("DROP INDEX idx_data_hashedliveapikey");
             migrationBuilder.Sql("DROP INDEX idx_data_hashedtestapikey");
+            migrationBuilder.Sql("DROP INDEX idx_data_hashedprojectapikey");
         }
     }
 }
