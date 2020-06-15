@@ -192,7 +192,6 @@ namespace Ranger.Services.Projects
         ///<param name="projectId">The project id for the API key to reset</param>
         ///<param name="projectModel">The model necessary to update a project</param>
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status304NotModified)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [HttpPut("/projects/{tenantId}/{projectId}")]
@@ -236,7 +235,17 @@ namespace Ranger.Services.Projects
             catch (NoOpException ex)
             {
                 logger.LogInformation(ex.Message);
-                return new ApiResponse(ex.Message, statusCode: StatusCodes.Status304NotModified);
+                return new ApiResponse(ex.Message, new ProjectResponseModel
+                {
+                    ProjectId = updatedProject.ProjectId,
+                    Name = updatedProject.Name,
+                    Description = updatedProject.Description,
+                    Enabled = updatedProject.Enabled,
+                    Version = projectModel.Version,
+                    LiveApiKeyPrefix = updatedProject.LiveApiKeyPrefix,
+                    TestApiKeyPrefix = updatedProject.TestApiKeyPrefix,
+                    ProjectApiKeyPrefix = updatedProject.ProjectApiKeyPrefix
+                });
             }
             catch (RangerException ex)
             {
