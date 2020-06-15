@@ -144,11 +144,11 @@ namespace Ranger.Services.Projects
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         [HttpPut("/projects/{tenantId}/{projectId}/{purpose}/reset")]
-        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, EnvironmentEnum purpose, ApiKeyResetModel apiKeyResetModel)
+        public async Task<ApiResponse> ApiKeyReset(string tenantId, Guid projectId, ApiKeyPurposeEnum purpose, ApiKeyResetModel apiKeyResetModel)
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            var purposeString = Enum.GetName(typeof(EnvironmentEnum), purpose).ToLowerInvariant();
+            var purposeString = Enum.GetName(typeof(ApiKeyPurposeEnum), purpose).ToLowerInvariant();
             try
             {
                 var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, purpose, apiKeyResetModel.Version, projectId);

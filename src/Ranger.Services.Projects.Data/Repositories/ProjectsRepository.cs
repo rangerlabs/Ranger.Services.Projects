@@ -223,14 +223,14 @@ namespace Ranger.Services.Projects.Data
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
 
-        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, EnvironmentEnum environment, int version, Guid projectId)
+        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, ApiKeyPurposeEnum environment, int version, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
                 throw new ArgumentException($"{nameof(userEmail)} was null or whitespace");
             }
 
-            var environmentString = Enum.GetName(typeof(EnvironmentEnum), environment).ToLowerInvariant();
+            var environmentString = Enum.GetName(typeof(ApiKeyPurposeEnum), environment).ToLowerInvariant();
             var currentProjectStream = await GetProjectStreamByProjectIdAsync(projectId);
             if (!(currentProjectStream is null))
             {
