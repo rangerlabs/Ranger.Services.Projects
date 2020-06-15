@@ -237,14 +237,14 @@ namespace Ranger.Services.Projects
                 logger.LogInformation(ex.Message);
                 return new ApiResponse(ex.Message, new ProjectResponseModel
                 {
-                    ProjectId = updatedProject.ProjectId,
-                    Name = updatedProject.Name,
-                    Description = updatedProject.Description,
-                    Enabled = updatedProject.Enabled,
-                    Version = projectModel.Version,
-                    LiveApiKeyPrefix = updatedProject.LiveApiKeyPrefix,
-                    TestApiKeyPrefix = updatedProject.TestApiKeyPrefix,
-                    ProjectApiKeyPrefix = updatedProject.ProjectApiKeyPrefix
+                    ProjectId = project.ProjectId,
+                    Name = project.Name,
+                    Description = project.Description,
+                    Enabled = project.Enabled,
+                    Version = projectModel.Version - 1, //TODO: this could be inaccurate but would require a call to the database to get the new version which should not be done in a catch block, deal with it later
+                    LiveApiKeyPrefix = project.LiveApiKeyPrefix,
+                    TestApiKeyPrefix = project.TestApiKeyPrefix,
+                    ProjectApiKeyPrefix = project.ProjectApiKeyPrefix
                 });
             }
             catch (RangerException ex)
