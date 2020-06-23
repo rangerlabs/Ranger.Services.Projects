@@ -457,7 +457,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE puc.project_id = '{projectId.ToString()}' 
+                        WHERE puc.project_id = '{projectId}' 
                         AND (ps.data ->> 'ProjectId') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
