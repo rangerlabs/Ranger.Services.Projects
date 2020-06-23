@@ -199,13 +199,6 @@ namespace Ranger.Services.Projects
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            var project = await repo.GetProjectByProjectIdAsync(projectId);
-            if (project is null)
-            {
-                var message = "The project was not found. PUT can only be used to update existing projects";
-                logger.LogDebug(message);
-                throw new ApiException(message, StatusCodes.Status400BadRequest);
-            }
             Project updatedProject = null;
             try
             {
@@ -234,18 +227,27 @@ namespace Ranger.Services.Projects
             }
             catch (NoOpException ex)
             {
-                logger.LogInformation(ex.Message);
-                return new ApiResponse(ex.Message, new ProjectResponseModel
+                try
                 {
-                    ProjectId = project.ProjectId,
-                    Name = project.Name,
-                    Description = project.Description,
-                    Enabled = project.Enabled,
-                    Version = projectModel.Version - 1, //TODO: this could be inaccurate but would require a call to the database to get the new version which should not be done in a catch block, deal with it later
-                    LiveApiKeyPrefix = project.LiveApiKeyPrefix,
-                    TestApiKeyPrefix = project.TestApiKeyPrefix,
-                    ProjectApiKeyPrefix = project.ProjectApiKeyPrefix
-                });
+                    var project = await repo.GetProjectByProjectIdAsync(projectId);
+                    logger.LogInformation(ex.Message);
+                    return new ApiResponse(ex.Message, new ProjectResponseModel
+                    {
+                        ProjectId = project.ProjectId,
+                        Name = project.Name,
+                        Description = project.Description,
+                        Enabled = project.Enabled,
+                        Version = projectModel.Version - 1,
+                        LiveApiKeyPrefix = project.LiveApiKeyPrefix,
+                        TestApiKeyPrefix = project.TestApiKeyPrefix,
+                        ProjectApiKeyPrefix = project.ProjectApiKeyPrefix
+                    });
+                }
+                catch (Exception localEx)
+                {
+                    logger.LogInformation(localEx, "Failed to retrieve existing project during a NoOpException handler");
+                    throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
+                }
             }
             catch (RangerException ex)
             {

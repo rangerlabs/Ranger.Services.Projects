@@ -372,6 +372,10 @@ namespace Ranger.Services.Projects.Data
             }
 
             var currentProjectStream = await GetNotDeletedProjectStreamByProjectIdAsync(project.ProjectId);
+            if (currentProjectStream is null)
+            {
+                throw new RangerException("The project was not found. PUT can only be used to update existing projects");
+            }
             ValidateRequestVersionIncremented(version, currentProjectStream);
 
             var outdatedProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
