@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -484,7 +485,7 @@ namespace Ranger.Services.Projects.Data
             };
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
             return await this.context.ProjectStreams
-            .FromSqlInterpolated($@"
+            .FromSqlRaw($@"
                 SELECT * FROM (
                     WITH not_deleted AS(
                         SELECT 
@@ -497,7 +498,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE puc.{columnName} = '{hashedApiKey}' 
+                        WHERE puc.{columnName} = @apiKey
                         AND (ps.data ->> 'ProjectId') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
@@ -510,7 +511,7 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream").FirstOrDefaultAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new SqlParameter("apiKey", hashedApiKey)).FirstOrDefaultAsync();
         }
 
         private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectNameAsync(string name)
