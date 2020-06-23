@@ -479,7 +479,7 @@ namespace Ranger.Services.Projects.Data
             var columnName = apiKeyPurpose switch
             {
                 ApiKeyPurposeEnum.LIVE => "hashed_live_api_key",
-                ApiKeyPurposeEnum.TEST => "hashed_text_api_key",
+                ApiKeyPurposeEnum.TEST => "hashed_test_api_key",
                 ApiKeyPurposeEnum.PROJ => "hashed_project_api_key",
                 _ => throw new ArgumentException("Invalid Api Key purpose")
             };
