@@ -480,7 +480,7 @@ namespace Ranger.Services.Projects.Data
             {
                 ApiKeyPurposeEnum.LIVE => "hashed_live_api_key",
                 ApiKeyPurposeEnum.TEST => "hashed_text_api_key",
-                ApiKeyPurposeEnum.PROJ => "hashed_proj_api_key",
+                ApiKeyPurposeEnum.PROJ => "hashed_project_api_key",
                 _ => throw new ArgumentException("Invalid Api Key purpose")
             };
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
