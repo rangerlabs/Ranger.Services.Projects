@@ -27,7 +27,7 @@ namespace Ranger.Services.Projects.Handlers
             foreach (var tenantLimit in message.TenantLimits)
             {
                 var repo = projectsRepositoryFactory(tenantLimit.Item1);
-                var projects = await repo.GetAllProjects();
+                var projects = await repo.GetAllNotDeletedProjects();
                 if (projects.Count() > tenantLimit.Item2)
                 {
                     var exceededByCount = projects.Count() - tenantLimit.Item2;

@@ -11,7 +11,7 @@ namespace Ranger.Services.Projects.Data
         Task SoftDeleteAsync(string userEmail, Guid projectId);
         Task<(Project project, int version)> GetProjectByName(string projectName);
         Task<IEnumerable<(Project project, int version)>> GetProjectsForUser(string email);
-        Task<IEnumerable<(Project project, int version)>> GetAllProjects();
+        Task<IEnumerable<(Project project, int version)>> GetAllNotDeletedProjects();
         Task<Project> GetProjectByProjectIdAsync(Guid projectId);
         Task<Project> GetProjectByApiKeyAsync(string apiKey);
         Task<Project> UpdateProjectAsync(string userEmail, string eventName, int version, Project project);

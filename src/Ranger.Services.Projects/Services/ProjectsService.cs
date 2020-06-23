@@ -31,7 +31,7 @@ namespace Ranger.Services.Projects
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            var projects = await repo.GetAllProjects();
+            var projects = await repo.GetAllNotDeletedProjects();
             return projects.Select(_ => new ProjectResponseModel()
             {
                 Description = _.project.Description,
@@ -71,7 +71,7 @@ namespace Ranger.Services.Projects
             }
             else
             {
-                projects = await repo.GetAllProjects();
+                projects = await repo.GetAllNotDeletedProjects();
             }
 
             return projects.Select(_ => new ProjectResponseModel()

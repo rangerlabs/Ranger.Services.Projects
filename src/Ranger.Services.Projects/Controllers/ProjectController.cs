@@ -318,7 +318,7 @@ namespace Ranger.Services.Projects
         {
             var limitsApiResponse = await subscriptionsClient.GetSubscription<SubscriptionLimitDetails>(tenantId);
             var repo = projectsRepositoryFactory(tenantId);
-            var projects = await repo.GetAllProjects();
+            var projects = await repo.GetAllNotDeletedProjects();
             if (!limitsApiResponse.Result.Active)
             {
                 throw new ApiException($"Failed to create project '{projectModel.Name}'. Subscription is inactive", statusCode: StatusCodes.Status402PaymentRequired);
