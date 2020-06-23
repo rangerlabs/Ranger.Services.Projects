@@ -520,6 +520,7 @@ namespace Ranger.Services.Projects.Data
             {
                 throw new ArgumentException($"'{nameof(name)}' cannot be null or whitespace", nameof(name));
             }
+            name = name.ToLowerInvariant();
 
             return await this.context.ProjectStreams
             .FromSqlInterpolated($@"
