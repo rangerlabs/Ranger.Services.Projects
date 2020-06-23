@@ -511,7 +511,7 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new SqlParameter("@apiKey", hashedApiKey)).FirstOrDefaultAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new NpgsqlParameter("@apiKey", hashedApiKey)).FirstOrDefaultAsync();
         }
 
         private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectNameAsync(string name)
