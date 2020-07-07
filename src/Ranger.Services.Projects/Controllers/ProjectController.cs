@@ -169,12 +169,12 @@ namespace Ranger.Services.Projects
             }
             catch (ConcurrencyException ex)
             {
-                logger.LogError(ex.Message);
+                logger.LogDebug(ex.Message);
                 throw new ApiException(ex.Message, StatusCodes.Status409Conflict);
             }
             catch (RangerException ex)
             {
-                logger.LogError(ex.Message);
+                logger.LogWarning(ex.Message);
                 throw new ApiException(ex.Message, StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
@@ -217,12 +217,12 @@ namespace Ranger.Services.Projects
             }
             catch (ConcurrencyException ex)
             {
-                logger.LogError(ex.Message);
+                logger.LogDebug(ex.Message);
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (EventStreamDataConstraintException ex)
             {
-                logger.LogError(ex, "Failed to save project stream because a constraint was violated");
+                logger.LogDebug(ex, "Failed to save project stream because a constraint was violated");
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (NoOpException ex)
@@ -245,13 +245,13 @@ namespace Ranger.Services.Projects
                 }
                 catch (Exception localEx)
                 {
-                    logger.LogInformation(localEx, "Failed to retrieve existing project during a NoOpException handler");
+                    logger.LogDebug(localEx, "Failed to retrieve existing project during a NoOpException handler");
                     throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
                 }
             }
             catch (RangerException ex)
             {
-                logger.LogInformation(ex.Message);
+                logger.LogWarning(ex.Message);
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
@@ -292,12 +292,12 @@ namespace Ranger.Services.Projects
             }
             catch (ConcurrencyException ex)
             {
-                logger.LogError(ex.Message);
+                logger.LogWarning(ex.Message);
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (RangerException ex)
             {
-                logger.LogInformation(ex.Message);
+                logger.LogWarning(ex.Message);
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status400BadRequest);
             }
             catch (Exception ex)
@@ -370,7 +370,7 @@ namespace Ranger.Services.Projects
             }
             catch (EventStreamDataConstraintException ex)
             {
-                logger.LogError(ex, "Failed to save project stream because a constraint was violated");
+                logger.LogDebug(ex, "Failed to save project stream because a constraint was violated");
                 throw new ApiException(String.IsNullOrWhiteSpace(ex.Message) ? "Failed to save the updated project" : ex.Message, StatusCodes.Status409Conflict);
             }
             catch (Exception ex)
