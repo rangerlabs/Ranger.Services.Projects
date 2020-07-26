@@ -6,14 +6,9 @@ services:
         ports:
             - '8086:8086'
         networks:
-            - projects
             - ranger
 
 networks:
     ranger:
         name: ranger-network
-        external: true
-
-    projects:
-        name: projects-network
         external: true

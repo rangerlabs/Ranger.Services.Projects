@@ -1,1 +1,0 @@
-docker-compose -f ./docker-compose-infrastructure.yml -p projects down

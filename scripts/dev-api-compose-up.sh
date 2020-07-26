@@ -1,1 +1,0 @@
-docker-compose -f ./docker-compose-api.yml -f ./docker-compose-api.dev.yml -p projects up -d
