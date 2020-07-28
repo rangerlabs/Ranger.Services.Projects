@@ -46,10 +46,10 @@ namespace Ranger.Services.Projects
                     options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
-            var identityAuthority = configuration["httpClient:identityAuthority"];
-            services.AddAutoWrapper();
+
+            services.AddRangerApiVersioning();
+            services.ConfigureAutoWrapperModelStateResponseFactory();
             services.AddSwaggerGen("Projects API", "v1");
-            services.AddApiVersioning(o => o.ApiVersionReader = new HeaderApiVersionReader("api-version"));
 
             services.AddDbContext<ProjectsDbContext>((serviceProvider, options) =>
             {
@@ -58,6 +58,7 @@ namespace Ranger.Services.Projects
                 ServiceLifetime.Transient
             );
 
+            var identityAuthority = configuration["httpClient:identityAuthority"];
             services.AddPollyPolicyRegistry();
             services.AddTenantsHttpClient("http://tenants:8082", identityAuthority, "tenantsApi", "cKprgh9wYKWcsm");
             services.AddIdentityHttpClient("http://identity:5000", identityAuthority, "IdentityServerApi", "89pCcXHuDYTXY");
