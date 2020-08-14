@@ -30,9 +30,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="3.1.4" />
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="5.0.1" />
     <PackageReference Include="Ranger.Monitoring" version="3.1.5" />
-    <PackageReference Include="Ranger.RabbitMQ" version="3.2.4" />
-    <PackageReference Include="Ranger.ApiUtilities" Version="3.4.2" />
-    <PackageReference Include="Ranger.InternalHttpClient" Version="4.8.5" />
+    <PackageReference Include="Ranger.RabbitMQ" version="3.2.5" />
+    <PackageReference Include="Ranger.ApiUtilities" Version="3.4.3" />
+    <PackageReference Include="Ranger.InternalHttpClient" Version="4.8.6" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Ranger.Services.Projects.Data\Ranger.Services.Projects.Data.csproj" />
