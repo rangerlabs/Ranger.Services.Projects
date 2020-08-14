@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Ranger.Common;
 using Ranger.InternalHttpClient;
@@ -27,11 +28,11 @@ namespace Ranger.Services.Projects
             this.identityClient = identityClient;
         }
 
-        public async Task<IEnumerable<ProjectResponseModel>> GetAllProjects(string tenantId)
+        public async Task<IEnumerable<ProjectResponseModel>> GetAllProjects(string tenantId, CancellationToken cancellationToken = default(CancellationToken))
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            var projects = await repo.GetAllNotDeletedProjects();
+            var projects = await repo.GetAllNotDeletedProjects(cancellationToken);
             return projects.Select(_ => new ProjectResponseModel()
             {
                 Description = _.project.Description,
@@ -45,33 +46,33 @@ namespace Ranger.Services.Projects
             });
         }
 
-        public async Task<Project> GetProjectByApiKey(string tenantId, string apiKey)
+        public async Task<Project> GetProjectByApiKey(string tenantId, string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
             var repo = projectsRepositoryFactory(tenantId);
-            return await repo.GetProjectByApiKeyAsync(apiKey);
+            return await repo.GetProjectByApiKeyAsync(apiKey, cancellationToken);
         }
 
-        public async Task<ProjectResponseModel> GetProjectByName(string tenantId, string name)
+        public async Task<ProjectResponseModel> GetProjectByName(string tenantId, string name, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var projects = await GetAllProjects(tenantId);
+            var projects = await GetAllProjects(tenantId, cancellationToken);
             return projects.Where(_ => _.Name == name).SingleOrDefault();
         }
 
-        public async Task<IEnumerable<ProjectResponseModel>> GetProjectsForUser(string tenantId, string email)
+        public async Task<IEnumerable<ProjectResponseModel>> GetProjectsForUser(string tenantId, string email, CancellationToken cancellationToken = default(CancellationToken))
         {
             var repo = projectsRepositoryFactory(tenantId);
 
-            RangerApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email);
+            RangerApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email, cancellationToken);
             var role = Enum.Parse<RolesEnum>(apiResponse.Result);
 
             IEnumerable<(Project project, int version)> projects;
             if (role == RolesEnum.User)
             {
-                projects = await repo.GetProjectsForUser(email);
+                projects = await repo.GetProjectsForUser(email, cancellationToken);
             }
             else
             {
-                projects = await repo.GetAllNotDeletedProjects();
+                projects = await repo.GetAllNotDeletedProjects(cancellationToken);
             }
 
             return projects.Select(_ => new ProjectResponseModel()

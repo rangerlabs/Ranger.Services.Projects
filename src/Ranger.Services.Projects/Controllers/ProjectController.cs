@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using AutoWrapper.Wrappers;
 using Microsoft.AspNetCore.Authorization;
@@ -57,11 +58,11 @@ namespace Ranger.Services.Projects
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpGet("projects/{apikey}/tenant-id")]
-        public async Task<ApiResponse> GetTenantIdByApiKey(string apiKey)
+        public async Task<ApiResponse> GetTenantIdByApiKey(string apiKey, CancellationToken cancellationToken)
         {
             if (apiKey.StartsWith("live.") || apiKey.StartsWith("test.") || apiKey.StartsWith("proj."))
             {
-                var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey);
+                var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey, cancellationToken);
                 if (String.IsNullOrWhiteSpace(tenantId))
                 {
                     throw new ApiException("No tenant was found for the specified API key", StatusCodes.Status404NotFound);
@@ -86,26 +87,26 @@ namespace Ranger.Services.Projects
             string tenantId,
             [FromQuery] string projectName,
             [FromQuery] string email,
-            [FromQuery] string apiKey)
+            [FromQuery] string apiKey, CancellationToken cancellationToken)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(projectName) && string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(apiKey))
                 {
                     logger.LogDebug("No query parameter present, retrieving all projects");
-                    var projects = await projectsService.GetAllProjects(tenantId);
+                    var projects = await projectsService.GetAllProjects(tenantId, cancellationToken);
                     return new ApiResponse("Successfully retrieved projects", projects);
                 }
                 else if (!string.IsNullOrWhiteSpace(projectName))
                 {
                     logger.LogDebug("Retrieving projects for 'projectName' query parameter");
-                    var project = await projectsService.GetProjectByName(tenantId, projectName);
+                    var project = await projectsService.GetProjectByName(tenantId, projectName, cancellationToken);
                     return new ApiResponse("Successfully retrieved projects", project);
                 }
                 else if (!string.IsNullOrWhiteSpace(email))
                 {
                     logger.LogDebug("Retrieving projects for 'email' query parameter");
-                    var projects = await projectsService.GetProjectsForUser(tenantId, email);
+                    var projects = await projectsService.GetProjectsForUser(tenantId, email, cancellationToken);
                     return new ApiResponse("Successfully retrieved projects", projects);
                 }
                 else
@@ -113,7 +114,7 @@ namespace Ranger.Services.Projects
                     logger.LogDebug("Retrieving projects for 'apiKey' query parameter");
                     if (apiKey.StartsWith("live.") || apiKey.StartsWith("test.") || apiKey.StartsWith("proj."))
                     {
-                        var project = await projectsService.GetProjectByApiKey(tenantId, apiKey);
+                        var project = await projectsService.GetProjectByApiKey(tenantId, apiKey, cancellationToken);
                         if (project is null)
                         {
                             var message = $"No project was found for the provided API key.";
