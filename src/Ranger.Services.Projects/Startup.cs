@@ -114,7 +114,6 @@ namespace Ranger.Services.Projects
         public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
         {
             this.loggerFactory = loggerFactory;
-            applicationLifetime.ApplicationStopping.Register(OnShutdown);
 
             app.UseSwagger("v1", "Projects API");
             app.UseAutoWrapper();
@@ -133,7 +132,7 @@ namespace Ranger.Services.Projects
                 endpoints.MapDockerImageTagHealthCheck();
                 endpoints.MapRabbitMQHealthCheck();
             });
-            this.busSubscriber = app.UseRabbitMQ()
+            this.busSubscriber = app.UseRabbitMQ(applicationLifetime)
                 .SubscribeCommand<InitializeTenant>((c, e) =>
                    new InitializeTenantRejected(e.Message, "")
                 )
@@ -144,11 +143,6 @@ namespace Ranger.Services.Projects
                     new UpdateUserProjectsRejected(ex.Message, "")
                 )
                 .SubscribeCommand<EnforceProjectResourceLimits>();
-        }
-
-        private void OnShutdown()
-        {
-            this.busSubscriber.Dispose();
         }
     }
 }
