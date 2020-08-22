@@ -91,7 +91,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+                        WHERE (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id)   
                         ps.id,
@@ -103,7 +103,7 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps, project_users pu
-                    WHERE (ps.data ->> 'ProjectId') = pu.project_id::text
+                    WHERE (ps.data ->> 'Id') = pu.project_id::text
                     AND email = {email}
                     ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").ToListAsync(cancellationToken);
             List<(Project project, int version)> projects = new List<(Project project, int version)>();
@@ -141,7 +141,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+                        WHERE (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id)  
                         ps.id,
@@ -460,7 +460,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.project_id = {projectId} 
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
@@ -500,7 +500,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.{columnName} = @apiKey
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
@@ -537,7 +537,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.name = {name.ToLowerInvariant()} 
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
