@@ -212,7 +212,7 @@ namespace Ranger.Services.Projects.Data
                 ValidateRequestVersionIncremented(version, currentProjectStream);
 
                 var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
-                var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.ProjectId);
+                var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.Id);
                 var newApiKeyGuid = Guid.NewGuid().ToString("N");
                 string resultKey = "";
 
@@ -318,7 +318,7 @@ namespace Ranger.Services.Projects.Data
                         InsertedAt = DateTime.UtcNow,
                         InsertedBy = userEmail,
                     };
-                    this.context.ProjectUniqueConstraints.Remove(await this.context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
+                    this.context.ProjectUniqueConstraints.Remove(await this.context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.Id).SingleAsync());
                     this.context.ProjectStreams.Add(updatedProjectStream);
                     try
                     {
@@ -373,7 +373,7 @@ namespace Ranger.Services.Projects.Data
                 throw new ArgumentException($"{nameof(project)} was null");
             }
 
-            var currentProjectStream = await GetNotDeletedProjectStreamByProjectIdAsync(project.ProjectId);
+            var currentProjectStream = await GetNotDeletedProjectStreamByProjectIdAsync(project.Id);
             if (currentProjectStream is null)
             {
                 throw new RangerException("The project was not found. PUT can only be used to update existing projects");
@@ -393,7 +393,7 @@ namespace Ranger.Services.Projects.Data
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
             ValidateDataJsonInequality(currentProjectStream, serializedNewProjectData);
 
-            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.ProjectId);
+            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.Id);
             uniqueConstraint.Name = project.Name.ToLowerInvariant();
             uniqueConstraint.HashedLiveApiKey = project.HashedLiveApiKey;
             uniqueConstraint.HashedTestApiKey = project.HashedTestApiKey;
@@ -584,7 +584,7 @@ namespace Ranger.Services.Projects.Data
         {
             var newProjectUniqueConstraint = new ProjectUniqueConstraint
             {
-                ProjectId = project.ProjectId,
+                ProjectId = project.Id,
                 TenantId = contextTenant.TenantId,
                 Name = project.Name.ToLowerInvariant(),
                 HashedLiveApiKey = project.HashedLiveApiKey,

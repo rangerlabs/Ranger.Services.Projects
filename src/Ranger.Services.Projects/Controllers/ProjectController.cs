@@ -155,7 +155,7 @@ namespace Ranger.Services.Projects
                 var (project, newApiKey) = await repo.UpdateApiKeyAsync(apiKeyResetModel.UserEmail, purpose, apiKeyResetModel.Version, projectId);
                 return new ApiResponse("Successfully reset api key", new ProjectResponseModel
                 {
-                    ProjectId = project.ProjectId,
+                    ProjectId = project.Id,
                     Name = project.Name,
                     Description = project.Description,
                     LiveApiKey = purposeString == "live" ? newApiKey : "",
@@ -209,7 +209,7 @@ namespace Ranger.Services.Projects
                     projectModel.Version,
                     new Project
                     {
-                        ProjectId = projectId,
+                        Id = projectId,
                         Name = projectModel.Name,
                         Description = projectModel.Description,
                         Enabled = projectModel.Enabled,
@@ -234,7 +234,7 @@ namespace Ranger.Services.Projects
                     logger.LogInformation(ex.Message);
                     return new ApiResponse(ex.Message, new ProjectResponseModel
                     {
-                        ProjectId = project.ProjectId,
+                        ProjectId = project.Id,
                         Name = project.Name,
                         Description = project.Description,
                         Enabled = project.Enabled,
@@ -263,7 +263,7 @@ namespace Ranger.Services.Projects
             }
             return new ApiResponse("Successfully updated project", new ProjectResponseModel
             {
-                ProjectId = updatedProject.ProjectId,
+                ProjectId = updatedProject.Id,
                 Name = updatedProject.Name,
                 Description = updatedProject.Description,
                 Enabled = updatedProject.Enabled,
@@ -354,7 +354,7 @@ namespace Ranger.Services.Projects
 
             var project = new Project
             {
-                ProjectId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
                 Name = projectModel.Name,
                 HashedLiveApiKey = hashedLiveApiKey,
                 HashedTestApiKey = hashedTestApiKey,
@@ -383,7 +383,7 @@ namespace Ranger.Services.Projects
 
             return new ApiResponse("Successfully created new project", new ProjectResponseModel
             {
-                ProjectId = project.ProjectId,
+                ProjectId = project.Id,
                 Name = project.Name,
                 Description = project.Description,
                 LiveApiKey = liveApiKeyGuid,

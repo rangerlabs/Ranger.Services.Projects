@@ -4,7 +4,7 @@ namespace Ranger.Services.Projects.Data
 {
     public interface IProject
     {
-        Guid ProjectId { get; set; }
+        Guid Id { get; set; }
         string Name { get; set; }
         string HashedLiveApiKey { get; set; }
         string HashedTestApiKey { get; set; }
