@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,42 +24,42 @@ namespace Ranger.Services.Projects.Data
             this.logger = logger;
         }
 
-        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserEmail(string email)
+        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserEmail(string email, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(email))
             {
                 throw new System.ArgumentException($"{nameof(email)} was null or whitespace");
             }
-            return await this.context.ProjectUsers.Where(_ => _.Email == email).Select(_ => _.ProjectId).ToListAsync();
+            return await this.context.ProjectUsers.Where(_ => _.Email == email).Select(_ => _.ProjectId).ToListAsync(cancellationToken);
         }
 
-        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserId(string userId)
+        public async Task<IEnumerable<Guid>> GetAuthorizedProjectIdsForUserId(string userId, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
                 throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
-            return await this.context.ProjectUsers.Where(_ => _.UserId == userId).Select(_ => _.ProjectId).ToListAsync();
+            return await this.context.ProjectUsers.Where(_ => _.UserId == userId).Select(_ => _.ProjectId).ToListAsync(cancellationToken);
         }
 
-        public async Task<bool> IsUserEmailAuthorizedForProject(string email, Guid projectId)
+        public async Task<bool> IsUserEmailAuthorizedForProject(string email, Guid projectId, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(email))
             {
                 throw new System.ArgumentException($"{nameof(email)} was null or whitespace");
             }
 
-            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.Email == email);
+            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.Email == email, cancellationToken);
         }
 
-        public async Task<bool> IsUserIdAuthorizedForProject(string userId, Guid projectId)
+        public async Task<bool> IsUserIdAuthorizedForProject(string userId, Guid projectId, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
                 throw new System.ArgumentException($"{nameof(userId)} was null or whitespace");
             }
 
-            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.UserId == userId);
+            return await this.context.ProjectUsers.AnyAsync(_ => _.ProjectId == projectId && _.UserId == userId, cancellationToken);
         }
 
         public async Task<IEnumerable<Guid>> AddUserToProjects(string userId, string email, IEnumerable<Guid> projectIds, string commandingUserEmail)

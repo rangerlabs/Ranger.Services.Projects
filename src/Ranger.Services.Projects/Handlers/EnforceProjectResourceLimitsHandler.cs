@@ -34,14 +34,14 @@ namespace Ranger.Services.Projects.Handlers
                     var projectsToRemove = projects.OrderByDescending(p => p.project.CreatedOn).Take(exceededByCount);
                     foreach (var projectToRemove in projectsToRemove)
                     {
-                        await repo.SoftDeleteAsync("SubscriptionEnforcer", projectToRemove.project.ProjectId);
+                        await repo.SoftDeleteAsync("SubscriptionEnforcer", projectToRemove.project.Id);
                     }
-                    var remainingProjects = projects.Select(p => p.project.ProjectId).Except(projectsToRemove.Select(p => p.project.ProjectId));
+                    var remainingProjects = projects.Select(p => p.project.Id).Except(projectsToRemove.Select(p => p.project.Id));
                     tenantRemainingProjects.Add((tenantLimit.Item1, remainingProjects));
                 }
                 else
                 {
-                    tenantRemainingProjects.Add((tenantLimit.Item1, projects.Select(p => p.project.ProjectId)));
+                    tenantRemainingProjects.Add((tenantLimit.Item1, projects.Select(p => p.project.Id)));
                 }
             }
             busPublisher.Publish(new ProjectResourceLimitsEnforced(tenantRemainingProjects), context);

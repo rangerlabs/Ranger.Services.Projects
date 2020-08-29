@@ -5,7 +5,7 @@ namespace Ranger.Services.Projects.Data
 {
     public class Project : IProject
     {
-        public Guid ProjectId { get; set; }
+        public Guid Id { get; set; }
         public string Name { get; set; }
         public string HashedLiveApiKey { get; set; }
         public string HashedTestApiKey { get; set; }

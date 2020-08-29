@@ -39,6 +39,7 @@ namespace Ranger.Services.Projects
             services.AddControllers(options =>
                 {
                     options.EnableEndpointRouting = false;
+                    options.Filters.Add<OperationCanceledExceptionFilter>();
                 })
                 .AddNewtonsoftJson(options =>
                 {
@@ -110,19 +111,14 @@ namespace Ranger.Services.Projects
             builder.AddRabbitMq();
         }
 
-        public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime)
         {
-            this.loggerFactory = loggerFactory;
-            applicationLifetime.ApplicationStopping.Register(OnShutdown);
-
             app.UseSwagger("v1", "Projects API");
             app.UseAutoWrapper();
-
+            app.UseUnhandedExceptionLogger();
             app.UseRouting();
-
             app.UseAuthentication();
             app.UseAuthorization();
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
@@ -143,11 +139,6 @@ namespace Ranger.Services.Projects
                     new UpdateUserProjectsRejected(ex.Message, "")
                 )
                 .SubscribeCommand<EnforceProjectResourceLimits>();
-        }
-
-        private void OnShutdown()
-        {
-            this.busSubscriber.Dispose();
         }
     }
 }

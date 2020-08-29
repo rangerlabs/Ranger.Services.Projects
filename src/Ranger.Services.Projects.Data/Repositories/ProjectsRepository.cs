@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -69,7 +70,7 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        public async Task<IEnumerable<(Project project, int version)>> GetProjectsForUser(string email)
+        public async Task<IEnumerable<(Project project, int version)>> GetProjectsForUser(string email, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -90,7 +91,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+                        WHERE (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id)   
                         ps.id,
@@ -102,9 +103,9 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps, project_users pu
-                    WHERE (ps.data ->> 'ProjectId') = pu.project_id::text
+                    WHERE (ps.data ->> 'Id') = pu.project_id::text
                     AND email = {email}
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").ToListAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").ToListAsync(cancellationToken);
             List<(Project project, int version)> projects = new List<(Project project, int version)>();
             foreach (var projectStream in projectStreams)
             {
@@ -113,18 +114,18 @@ namespace Ranger.Services.Projects.Data
             return projects;
         }
 
-        public async Task<(Project project, int version)> GetProjectByName(string projectName)
+        public async Task<(Project project, int version)> GetProjectByName(string projectName, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(projectName))
             {
                 throw new ArgumentException("message", nameof(projectName));
             }
 
-            var projectStream = await GetNotDeletedProjectStreamByProjectNameAsync(projectName);
+            var projectStream = await GetNotDeletedProjectStreamByProjectNameAsync(projectName, cancellationToken);
             return (JsonConvert.DeserializeObject<Project>(projectStream.Data), projectStream.Version);
         }
 
-        public async Task<IEnumerable<(Project project, int version)>> GetAllNotDeletedProjects()
+        public async Task<IEnumerable<(Project project, int version)>> GetAllNotDeletedProjects(CancellationToken cancellationToken = default(CancellationToken))
         {
             var projectStreams = await this.context.ProjectStreams.
             FromSqlRaw(@"
@@ -140,7 +141,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_at,
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
-                        WHERE (ps.data ->> 'ProjectId') = puc.project_id::text
+                        WHERE (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id)  
                         ps.id,
@@ -152,7 +153,7 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").ToListAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").ToListAsync(cancellationToken);
             List<(Project project, int version)> projects = new List<(Project project, int version)>();
             foreach (var projectStream in projectStreams)
             {
@@ -163,18 +164,18 @@ namespace Ranger.Services.Projects.Data
 
 
 
-        public async Task<Project> GetProjectByProjectIdAsync(Guid projectId)
+        public async Task<Project> GetProjectByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var projectStream = await GetNotDeletedProjectStreamByProjectIdAsync(projectId);
+            var projectStream = await GetNotDeletedProjectStreamByProjectIdAsync(projectId, cancellationToken);
             return JsonConvert.DeserializeObject<Project>(projectStream.Data);
         }
 
-        public async Task<string> GetProjectIdByCurrentNameAsync(string name)
+        public async Task<string> GetProjectIdByCurrentNameAsync(string name, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await this.context.ProjectUniqueConstraints.Where(_ => _.Name == name).Select(_ => _.ProjectId.ToString()).SingleOrDefaultAsync();
         }
 
-        public async Task<Project> GetProjectByApiKeyAsync(string apiKey)
+        public async Task<Project> GetProjectByApiKeyAsync(string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -184,15 +185,15 @@ namespace Ranger.Services.Projects.Data
             ProjectStream projectStream = null;
             if (apiKey.StartsWith("live."))
             {
-                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.LIVE, apiKey);
+                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.LIVE, apiKey, cancellationToken);
             }
             else if (apiKey.StartsWith("test."))
             {
-                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.TEST, apiKey);
+                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.TEST, apiKey, cancellationToken);
             }
             else if (apiKey.StartsWith("proj."))
             {
-                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.PROJ, apiKey);
+                projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.PROJ, apiKey, cancellationToken);
             }
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
@@ -211,7 +212,7 @@ namespace Ranger.Services.Projects.Data
                 ValidateRequestVersionIncremented(version, currentProjectStream);
 
                 var currentProject = JsonConvert.DeserializeObject<Project>(currentProjectStream.Data);
-                var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.ProjectId);
+                var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.Id);
                 var newApiKeyGuid = Guid.NewGuid().ToString("N");
                 string resultKey = "";
 
@@ -317,7 +318,7 @@ namespace Ranger.Services.Projects.Data
                         InsertedAt = DateTime.UtcNow,
                         InsertedBy = userEmail,
                     };
-                    this.context.ProjectUniqueConstraints.Remove(await this.context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.ProjectId).SingleAsync());
+                    this.context.ProjectUniqueConstraints.Remove(await this.context.ProjectUniqueConstraints.Where(_ => _.ProjectId == currentProject.Id).SingleAsync());
                     this.context.ProjectStreams.Add(updatedProjectStream);
                     try
                     {
@@ -372,7 +373,7 @@ namespace Ranger.Services.Projects.Data
                 throw new ArgumentException($"{nameof(project)} was null");
             }
 
-            var currentProjectStream = await GetNotDeletedProjectStreamByProjectIdAsync(project.ProjectId);
+            var currentProjectStream = await GetNotDeletedProjectStreamByProjectIdAsync(project.Id);
             if (currentProjectStream is null)
             {
                 throw new RangerException("The project was not found. PUT can only be used to update existing projects");
@@ -392,7 +393,7 @@ namespace Ranger.Services.Projects.Data
             var serializedNewProjectData = JsonConvert.SerializeObject(project);
             ValidateDataJsonInequality(currentProjectStream, serializedNewProjectData);
 
-            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.ProjectId);
+            var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(project.Id);
             uniqueConstraint.Name = project.Name.ToLowerInvariant();
             uniqueConstraint.HashedLiveApiKey = project.HashedLiveApiKey;
             uniqueConstraint.HashedTestApiKey = project.HashedTestApiKey;
@@ -442,7 +443,7 @@ namespace Ranger.Services.Projects.Data
             return project;
         }
 
-        private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectIdAsync(Guid projectId)
+        private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default(CancellationToken))
         {
             return await this.context.ProjectStreams
             .FromSqlInterpolated($@"
@@ -459,7 +460,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.project_id = {projectId} 
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
@@ -471,10 +472,10 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").FirstOrDefaultAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").FirstOrDefaultAsync(cancellationToken);
         }
 
-        private async Task<ProjectStream> GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum apiKeyPurpose, string apiKey)
+        private async Task<ProjectStream> GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum apiKeyPurpose, string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
             var columnName = apiKeyPurpose switch
             {
@@ -499,7 +500,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.{columnName} = @apiKey
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
@@ -511,10 +512,10 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new NpgsqlParameter("@apiKey", hashedApiKey)).FirstOrDefaultAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new NpgsqlParameter("@apiKey", hashedApiKey)).FirstOrDefaultAsync(cancellationToken);
         }
 
-        private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectNameAsync(string name)
+        private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectNameAsync(string name, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -536,7 +537,7 @@ namespace Ranger.Services.Projects.Data
                             ps.inserted_by
                         FROM project_streams ps, project_unique_constraints puc
                         WHERE puc.name = {name.ToLowerInvariant()} 
-                        AND (ps.data ->> 'ProjectId') = puc.project_id::text
+                        AND (ps.data ->> 'Id') = puc.project_id::text
                     )
                     SELECT DISTINCT ON (ps.stream_id) 
                         ps.id,
@@ -548,7 +549,7 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_at,
                         ps.inserted_by
                     FROM not_deleted ps
-                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").FirstOrDefaultAsync();
+                    ORDER BY ps.stream_id, ps.version DESC) AS projectstreams").FirstOrDefaultAsync(cancellationToken);
         }
 
 
@@ -574,16 +575,16 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        public async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId)
+        public async Task<ProjectUniqueConstraint> GetProjectUniqueConstraintsByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await this.context.ProjectUniqueConstraints.SingleOrDefaultAsync(_ => _.ProjectId == projectId);
+            return await this.context.ProjectUniqueConstraints.SingleOrDefaultAsync(_ => _.ProjectId == projectId, cancellationToken);
         }
 
         private void AddProjectUniqueConstraints(ProjectStream projectStream, Project project)
         {
             var newProjectUniqueConstraint = new ProjectUniqueConstraint
             {
-                ProjectId = project.ProjectId,
+                ProjectId = project.Id,
                 TenantId = contextTenant.TenantId,
                 Name = project.Name.ToLowerInvariant(),
                 HashedLiveApiKey = project.HashedLiveApiKey,
