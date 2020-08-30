@@ -25,8 +25,6 @@ namespace Ranger.Services.Projects
     {
         private readonly IWebHostEnvironment Environment;
         private readonly IConfiguration configuration;
-        private ILoggerFactory loggerFactory;
-        private IBusSubscriber busSubscriber;
 
         public Startup(IWebHostEnvironment environment, IConfiguration configuration)
         {
@@ -128,17 +126,17 @@ namespace Ranger.Services.Projects
                 endpoints.MapDockerImageTagHealthCheck();
                 endpoints.MapRabbitMQHealthCheck();
             });
-            this.busSubscriber = app.UseRabbitMQ()
-                .SubscribeCommand<InitializeTenant>((c, e) =>
+            app.UseRabbitMQ()
+                .SubscribeCommandWithHandler<InitializeTenant>((c, e) =>
                    new InitializeTenantRejected(e.Message, "")
                 )
-                .SubscribeCommand<CreateProject>((c, ex) =>
+                .SubscribeCommandWithHandler<CreateProject>((c, ex) =>
                     new CreateProjectRejected(ex.Message, "")
                 )
-                .SubscribeCommand<UpdateUserProjects>((c, ex) =>
+                .SubscribeCommandWithHandler<UpdateUserProjects>((c, ex) =>
                     new UpdateUserProjectsRejected(ex.Message, "")
                 )
-                .SubscribeCommand<EnforceProjectResourceLimits>();
+                .SubscribeCommandWithHandler<EnforceProjectResourceLimits>();
         }
     }
 }
