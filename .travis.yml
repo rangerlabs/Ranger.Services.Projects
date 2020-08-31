@@ -1,14 +1,32 @@
 language: csharp
 mono: none
+dotnet: 3.1.401
 sudo: required
+env:
+    global:
+        - ASPNETCORE_ENVIRONMENT=Production
+        - PGPORT=5433
+        - PGVER=12
+addons:
+  postgresql: '12'
+  apt:
+    packages:
+    - rabbitmq-server
+    - postgresql-12
+    - postgresql-client-12
 services:
     - docker
+    - rabbitmq
 branches:
     only:
         - master
 before_script:
     - chmod -R a+x scripts
+    - psql -c 'create database projects;'
+    - psql -c "alter user postgres password 'postgres';"
 script:
+    - './scripts/create-nuget-config.sh $MYGET_KEY'
+    - 'dotnet test'
     - './scripts/travis-build.sh'
 after_success:
     - './scripts/travis-docker-publish.sh'

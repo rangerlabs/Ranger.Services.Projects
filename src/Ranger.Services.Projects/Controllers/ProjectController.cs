@@ -54,6 +54,7 @@ namespace Ranger.Services.Projects
         /// Gets the tenant id for the provided API Key
         ///</summary>
         ///<param name="apiKey">The API dey to request the tenant's unique identifier for</param>
+        /// <param name="cancellationToken"></param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -79,6 +80,7 @@ namespace Ranger.Services.Projects
         ///<param name="projectName">The name of the project to query for</param>
         ///<param name="email">The email to retrieve the authorized projects for</param>
         ///<param name="apiKey">The apiKey of the project to retrieve</param>
+        /// <param name="cancellationToken"></param>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
