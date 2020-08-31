@@ -26,7 +26,7 @@ before_script:
     - psql -c "alter user postgres password 'postgres';"
 script:
     - './scripts/create-nuget-config.sh $MYGET_KEY'
-    - 'dotnet test'
+    - './scripts/dotnet-test.sh'
     - './scripts/travis-build.sh'
 after_success:
     - './scripts/travis-docker-publish.sh'

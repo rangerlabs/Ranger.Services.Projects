@@ -74,13 +74,21 @@ namespace Ranger.Services.Projects
                     options.ApiName = "projectsApi";
                     options.RequireHttpsMetadata = false;
                 });
-
-            services.AddDataProtection()
-                .SetApplicationName("Projects")
-                .ProtectKeysWithCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
-                .UnprotectKeysWithAnyCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
-                .PersistKeysToDbContext<ProjectsDbContext>();
-
+            // Workaround for MAC validation issues on MacOS
+            if (configuration.IsIntegrationTesting())
+            {
+                services.AddDataProtection()
+                   .SetApplicationName("Projects")
+                   .PersistKeysToDbContext<ProjectsDbContext>();
+            }
+            else
+            {
+                services.AddDataProtection()
+                    .SetApplicationName("Projects")
+                    .ProtectKeysWithCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
+                    .UnprotectKeysWithAnyCertificate(new X509Certificate2(configuration["DataProtectionCertPath:Path"]))
+                    .PersistKeysToDbContext<ProjectsDbContext>();
+            }
             services.AddLiveHealthCheck();
             services.AddEntityFrameworkHealthCheck<ProjectsDbContext>();
             services.AddDockerImageTagHealthCheck();
