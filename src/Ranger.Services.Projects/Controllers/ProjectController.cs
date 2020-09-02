@@ -26,15 +26,15 @@ namespace Ranger.Services.Projects
         private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
         private readonly ILogger<ProjectController> logger;
         private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
-        private readonly IdentityHttpClient identityClient;
-        private readonly SubscriptionsHttpClient subscriptionsClient;
+        private readonly IIdentityHttpClient identityClient;
+        private readonly ISubscriptionsHttpClient subscriptionsClient;
         private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
         private readonly ProjectsService projectsService;
 
         public ProjectController(
             IBusPublisher busPublisher,
-            IdentityHttpClient identityClient,
-            SubscriptionsHttpClient subscriptionsClient,
+            IIdentityHttpClient identityClient,
+            ISubscriptionsHttpClient subscriptionsClient,
             Func<string, ProjectsRepository> projectsRepositoryFactory,
             Func<string, ProjectUsersRepository> projectUsersRepositoryFactory,
             IProjectUniqueContraintRepository projectUniqueContraintRepository,

@@ -14,13 +14,13 @@ namespace Ranger.Services.Projects
         private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
         private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
         private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
-        private readonly IdentityHttpClient identityClient;
+        private readonly IIdentityHttpClient identityClient;
 
         public ProjectsService(
             Func<string, ProjectsRepository> projectsRepositoryFactory,
             Func<string, ProjectUsersRepository> projectUsersRepositoryFactory,
             IProjectUniqueContraintRepository projectUniqueContraintRepository,
-            IdentityHttpClient identityClient)
+            IIdentityHttpClient identityClient)
         {
             this.projectsRepositoryFactory = projectsRepositoryFactory;
             this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;

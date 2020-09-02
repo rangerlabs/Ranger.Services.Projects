@@ -11,11 +11,11 @@ namespace Ranger.Services.Projects
 {
     public class TenantServiceDbContext
     {
-        private readonly TenantsHttpClient tenantsClient;
+        private readonly ITenantsHttpClient tenantsClient;
         private readonly ILogger<TenantServiceDbContext> logger;
         private readonly CloudSqlOptions cloudSqlOptions;
 
-        public TenantServiceDbContext(TenantsHttpClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILogger<TenantServiceDbContext> logger)
+        public TenantServiceDbContext(ITenantsHttpClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILogger<TenantServiceDbContext> logger)
         {
             this.cloudSqlOptions = cloudSqlOptions;
             this.logger = logger;
