@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
 using Ranger.RabbitMQ;
+using Ranger.RabbitMQ.BusPublisher;
+using Ranger.RabbitMQ.BusSubscriber;
 using Shouldly;
 using Xunit;
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Ranger.Common;
 using Ranger.InternalHttpClient;
 using Ranger.RabbitMQ;
+using Ranger.RabbitMQ.BusPublisher;
 using Ranger.Services.Projects.Data;
 
 namespace Ranger.Services.Projects
