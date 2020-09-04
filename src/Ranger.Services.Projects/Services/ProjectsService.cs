@@ -3,34 +3,43 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Ranger.Common;
 using Ranger.InternalHttpClient;
 using Ranger.Services.Projects.Data;
+using StackExchange.Redis;
 
 namespace Ranger.Services.Projects
 {
     public class ProjectsService
     {
-        private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
-        private readonly Func<string, ProjectUsersRepository> projectUsersRepositoryFactory;
-        private readonly IProjectUniqueContraintRepository projectUniqueContraintRepository;
-        private readonly IIdentityHttpClient identityClient;
+        private readonly Func<string, ProjectsRepository> _projectsRepositoryFactory;
+        private readonly Func<string, ProjectUsersRepository> _projectUsersRepositoryFactory;
+        private readonly IProjectUniqueContraintRepository _projectUniqueContraintRepository;
+        private readonly IIdentityHttpClient _identityClient;
+        private readonly ILogger<ProjectsService> _logger;
+        private readonly IDatabase _redisDb;
 
         public ProjectsService(
             Func<string, ProjectsRepository> projectsRepositoryFactory,
             Func<string, ProjectUsersRepository> projectUsersRepositoryFactory,
             IProjectUniqueContraintRepository projectUniqueContraintRepository,
-            IIdentityHttpClient identityClient)
+            IIdentityHttpClient identityClient,
+            IConnectionMultiplexer connectionMultiplexer,
+            ILogger<ProjectsService> logger
+            )
         {
-            this.projectsRepositoryFactory = projectsRepositoryFactory;
-            this.projectUsersRepositoryFactory = projectUsersRepositoryFactory;
-            this.projectUniqueContraintRepository = projectUniqueContraintRepository;
-            this.identityClient = identityClient;
+            this._projectsRepositoryFactory = projectsRepositoryFactory;
+            this._projectUsersRepositoryFactory = projectUsersRepositoryFactory;
+            this._projectUniqueContraintRepository = projectUniqueContraintRepository;
+            this._identityClient = identityClient;
+            this._logger = logger;
+            _redisDb = connectionMultiplexer.GetDatabase();
         }
 
         public async Task<IEnumerable<ProjectResponseModel>> GetAllProjects(string tenantId, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var repo = projectsRepositoryFactory(tenantId);
+            var repo = _projectsRepositoryFactory(tenantId);
 
             var projects = await repo.GetAllNotDeletedProjects(cancellationToken);
             return projects.Select(_ => new ProjectResponseModel()
@@ -48,7 +57,7 @@ namespace Ranger.Services.Projects
 
         public async Task<Project> GetProjectByApiKey(string tenantId, string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var repo = projectsRepositoryFactory(tenantId);
+            var repo = _projectsRepositoryFactory(tenantId);
             return await repo.GetProjectByApiKeyAsync(apiKey, cancellationToken);
         }
 
@@ -60,9 +69,9 @@ namespace Ranger.Services.Projects
 
         public async Task<IEnumerable<ProjectResponseModel>> GetProjectsForUser(string tenantId, string email, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var repo = projectsRepositoryFactory(tenantId);
+            var repo = _projectsRepositoryFactory(tenantId);
 
-            RangerApiResponse<string> apiResponse = await this.identityClient.GetUserRoleAsync(tenantId, email, cancellationToken);
+            RangerApiResponse<string> apiResponse = await this._identityClient.GetUserRoleAsync(tenantId, email, cancellationToken);
             var role = Enum.Parse<RolesEnum>(apiResponse.Result);
 
             IEnumerable<(Project project, int version)> projects;
@@ -86,6 +95,23 @@ namespace Ranger.Services.Projects
                 ProjectApiKeyPrefix = _.project.ProjectApiKeyPrefix,
                 Version = _.version
             });
+        }
+
+        public async Task<string> GetTenantIdOrDefaultFromRedisByHashedApiKeyAsync(string hashedApiKey)
+        {
+            return await _redisDb.StringGetAsync(RedisKeys.GetTenantId(hashedApiKey));
+        }
+
+        public async Task SetTenantIdInRedisByHashedApiKey(string hashedApiKey, string tenantId)
+        {
+            await _redisDb.StringSetAsync(RedisKeys.GetTenantId(hashedApiKey), tenantId);
+            _logger.LogDebug("TenantId added to cache");
+        }
+
+        public async Task RemoveTenantIdFromRedisByHashedApiKey(string hashedApiKey)
+        {
+            await _redisDb.KeyDeleteAsync(RedisKeys.GetTenantId(hashedApiKey));
+            _logger.LogDebug("TenantId removed from cache");
         }
     }
 }

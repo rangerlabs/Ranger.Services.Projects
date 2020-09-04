@@ -198,7 +198,7 @@ namespace Ranger.Services.Projects.Data
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
 
-        public async Task<(Project, string)> UpdateApiKeyAsync(string userEmail, ApiKeyPurposeEnum environment, int version, Guid projectId)
+        public async Task<(Project, string, string)> UpdateApiKeyAsync(string userEmail, ApiKeyPurposeEnum environment, int version, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
@@ -215,9 +215,11 @@ namespace Ranger.Services.Projects.Data
                 var uniqueConstraint = await this.GetProjectUniqueConstraintsByProjectIdAsync(currentProject.Id);
                 var newApiKeyGuid = Guid.NewGuid().ToString("N");
                 string resultKey = "";
+                string oldHashedApiKey = "";
 
                 if (environmentString == "live")
                 {
+                    oldHashedApiKey = new String(currentProject.HashedLiveApiKey);
                     resultKey = "live." + newApiKeyGuid;
                     var newApiKeyPrefix = "live." + newApiKeyGuid.Substring(0, 6);
                     var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
@@ -227,6 +229,7 @@ namespace Ranger.Services.Projects.Data
                 }
                 else if (environmentString == "test")
                 {
+                    oldHashedApiKey = new String(currentProject.HashedTestApiKey);
                     resultKey = "test." + newApiKeyGuid;
                     var newApiKeyPrefix = "test." + newApiKeyGuid.Substring(0, 6);
                     var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
@@ -236,6 +239,7 @@ namespace Ranger.Services.Projects.Data
                 }
                 else if (environmentString == "proj")
                 {
+                    oldHashedApiKey = new String(currentProject.ProjectApiKeyPrefix);
                     resultKey = "proj." + newApiKeyGuid;
                     var newApiKeyPrefix = "proj." + newApiKeyGuid.Substring(0, 6);
                     var hashedApiKeyGuid = Crypto.GenerateSHA512Hash(resultKey);
@@ -282,7 +286,7 @@ namespace Ranger.Services.Projects.Data
                     throw;
                 }
 
-                return (currentProject, resultKey);
+                return (currentProject, resultKey, oldHashedApiKey);
             }
             else
             {
@@ -290,7 +294,7 @@ namespace Ranger.Services.Projects.Data
             }
         }
 
-        public async Task SoftDeleteAsync(string userEmail, Guid projectId)
+        public async Task<Project> SoftDeleteAsync(string userEmail, Guid projectId)
         {
             if (string.IsNullOrWhiteSpace(userEmail))
             {
@@ -349,6 +353,7 @@ namespace Ranger.Services.Projects.Data
                 {
                     throw new ConcurrencyException($"After '{maxConcurrencyAttempts}' attempts, the version was still outdated. Too many updates have been applied in a short period of time. The current stream version is '{currentProjectStream.Version + 1}'. The project was not deleted");
                 }
+                return currentProject;
             }
             else
             {

@@ -13,12 +13,14 @@ namespace Ranger.Services.Projects.Handlers
     {
         private readonly IBusPublisher busPublisher;
         private readonly Func<string, ProjectsRepository> projectsRepositoryFactory;
+        private readonly ProjectsService _projectsService;
         private readonly ILogger<EnforceProjectResourceLimitsHandler> logger;
 
-        public EnforceProjectResourceLimitsHandler(IBusPublisher busPublisher, Func<string, ProjectsRepository> projectUsersRepositoryFactory, ILogger<EnforceProjectResourceLimitsHandler> logger)
+        public EnforceProjectResourceLimitsHandler(IBusPublisher busPublisher, Func<string, ProjectsRepository> projectUsersRepositoryFactory, ProjectsService projectsService, ILogger<EnforceProjectResourceLimitsHandler> logger)
         {
             this.busPublisher = busPublisher;
             this.projectsRepositoryFactory = projectUsersRepositoryFactory;
+            this._projectsService = projectsService;
             this.logger = logger;
         }
 
@@ -36,6 +38,13 @@ namespace Ranger.Services.Projects.Handlers
                     foreach (var projectToRemove in projectsToRemove)
                     {
                         await repo.SoftDeleteAsync("SubscriptionEnforcer", projectToRemove.project.Id);
+                        var tasks = new Task[3]
+                        {
+                            _projectsService.RemoveTenantIdFromRedisByHashedApiKey(projectToRemove.project.HashedLiveApiKey),
+                            _projectsService.RemoveTenantIdFromRedisByHashedApiKey(projectToRemove.project.HashedTestApiKey),
+                            _projectsService.RemoveTenantIdFromRedisByHashedApiKey(projectToRemove.project.HashedProjectApiKey)
+                        };
+                        await Task.WhenAll(tasks);
                     }
                     var remainingProjects = projects.Select(p => p.project.Id).Except(projectsToRemove.Select(p => p.project.Id));
                     tenantRemainingProjects.Add((tenantLimit.Item1, remainingProjects));
