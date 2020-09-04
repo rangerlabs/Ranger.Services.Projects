@@ -17,6 +17,7 @@ using Ranger.Common;
 using Ranger.InternalHttpClient;
 using Ranger.Monitoring.HealthChecks;
 using Ranger.RabbitMQ;
+using Ranger.Redis;
 using Ranger.Services.Projects.Data;
 
 namespace Ranger.Services.Projects
@@ -54,6 +55,8 @@ namespace Ranger.Services.Projects
             {
                 options.UseNpgsql(configuration["cloudSql:ConnectionString"]);
             });
+
+            services.AddRedis(configuration["redis:ConnectionString"]);
 
             var identityAuthority = configuration["httpClient:identityAuthority"];
             services.AddPollyPolicyRegistry();
