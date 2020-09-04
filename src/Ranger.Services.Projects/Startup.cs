@@ -101,17 +101,17 @@ namespace Ranger.Services.Projects
         {
             builder.RegisterInstance<CloudSqlOptions>(configuration.GetOptions<CloudSqlOptions>("cloudSql"));
             builder.RegisterType<ProjectsDbContext>().InstancePerDependency();
-            builder.RegisterType<TenantServiceDbContext>();
+            builder.RegisterType<TenantServiceDbContextProvider>();
             builder.RegisterType<ProjectUniqueContraintRepository>().As<IProjectUniqueContraintRepository>();
             builder.Register((c, p) =>
             {
-                var provider = c.Resolve<TenantServiceDbContext>();
+                var provider = c.Resolve<TenantServiceDbContextProvider>();
                 var (dbContextOptions, contextTenant) = provider.GetDbContextOptions<ProjectsDbContext>(p.TypedAs<string>());
                 return new ProjectUsersRepository(contextTenant, new ProjectsDbContext(dbContextOptions), c.Resolve<ILogger<ProjectUsersRepository>>());
             });
             builder.Register((c, p) =>
             {
-                var provider = c.Resolve<TenantServiceDbContext>();
+                var provider = c.Resolve<TenantServiceDbContextProvider>();
                 var (dbContextOptions, contextTenant) = provider.GetDbContextOptions<ProjectsDbContext>(p.TypedAs<string>());
                 return new ProjectsRepository(contextTenant, new ProjectsDbContext(dbContextOptions), c.Resolve<ILogger<ProjectsRepository>>());
             });
