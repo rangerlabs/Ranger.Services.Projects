@@ -30,7 +30,7 @@ namespace Ranger.Services.Projects
         {
             NpgsqlConnectionStringBuilder connectionBuilder = new NpgsqlConnectionStringBuilder(cloudSqlOptions.ConnectionString);
             connectionBuilder.Username = tenantId;
-            var tenantDbKey = RedisKeys.TenantId(tenantId);
+            var tenantDbKey = RedisKeys.TenantDbPassword(tenantId);
 
             ContextTenant contextTenant = null;
             string redisValue = redisDb.StringGet(tenantDbKey);
