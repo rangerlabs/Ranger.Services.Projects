@@ -66,18 +66,19 @@ namespace Ranger.Services.Projects
             {
                 var hashedKey = Crypto.GenerateSHA512Hash(apiKey);
                 string redisResult = await _projectsService.GetTenantIdOrDefaultFromRedisByHashedApiKeyAsync(hashedKey);
-                if (!String.IsNullOrWhiteSpace(redisResult))
+                if (String.IsNullOrWhiteSpace(redisResult))
                 {
-                    _logger.LogDebug("TenantId retrieved from cache");
-                    return new ApiResponse("Successfully retrieved tenant id", redisResult);
+                    var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey, cancellationToken);
+                    if (String.IsNullOrWhiteSpace(tenantId))
+                    {
+                        throw new ApiException("No tenant was found for the specified API key", StatusCodes.Status404NotFound);
+                    }
+                    await _projectsService.SetTenantIdInRedisByHashedApiKey(hashedKey, tenantId);
+                    return new ApiResponse("Successfully retrieved tenant id", tenantId);
                 }
-                var tenantId = await projectUniqueContraintRepository.GetTenantIdByApiKeyAsync(apiKey, cancellationToken);
-                if (String.IsNullOrWhiteSpace(tenantId))
-                {
-                    throw new ApiException("No tenant was found for the specified API key", StatusCodes.Status404NotFound);
-                }
-                await _projectsService.SetTenantIdInRedisByHashedApiKey(apiKey, tenantId);
-                return new ApiResponse("Successfully retrieved tenant id", tenantId);
+                _logger.LogDebug("TenantId retrieved from cache");
+                return new ApiResponse("Successfully retrieved tenant id", redisResult);
+
             }
             throw new ApiException("The API key does not have a valid prefix", StatusCodes.Status400BadRequest);
         }
