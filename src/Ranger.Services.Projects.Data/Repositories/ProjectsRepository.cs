@@ -177,6 +177,7 @@ namespace Ranger.Services.Projects.Data
 
         public async Task<Project> GetProjectByApiKeyAsync(string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
+            logger.LogDebug("Querying for project by API key");
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 throw new ArgumentException($"{nameof(apiKey)} was null or whitespace");
@@ -195,6 +196,7 @@ namespace Ranger.Services.Projects.Data
             {
                 projectStream = await GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum.PROJ, apiKey, cancellationToken);
             }
+            logger.LogDebug("Query for project by API key complete");
             return JsonConvert.DeserializeObject<Project>(projectStream?.Data);
         }
 
@@ -482,6 +484,7 @@ namespace Ranger.Services.Projects.Data
 
         private async Task<ProjectStream> GetNotDeletedProjectStreamByApiKeyAsync(ApiKeyPurposeEnum apiKeyPurpose, string apiKey, CancellationToken cancellationToken = default(CancellationToken))
         {
+            logger.LogDebug("Querying for Not Deleted Project Stream by API key");
             var columnName = apiKeyPurpose switch
             {
                 ApiKeyPurposeEnum.LIVE => "hashed_live_api_key",
@@ -490,7 +493,7 @@ namespace Ranger.Services.Projects.Data
                 _ => throw new ArgumentException("Invalid Api Key purpose")
             };
             var hashedApiKey = Crypto.GenerateSHA512Hash(apiKey);
-            return await this.context.ProjectStreams
+            var result = await this.context.ProjectStreams
             .FromSqlRaw($@"
                 SELECT * FROM (
                     WITH not_deleted AS(
@@ -518,6 +521,8 @@ namespace Ranger.Services.Projects.Data
                         ps.inserted_by
                     FROM not_deleted ps
                     ORDER BY ps.stream_id, ps.version DESC) AS projectstream", new NpgsqlParameter("@apiKey", hashedApiKey)).FirstOrDefaultAsync(cancellationToken);
+            logger.LogDebug("Query for not deleted Project Stream by API key complete");
+            return result;
         }
 
         private async Task<ProjectStream> GetNotDeletedProjectStreamByProjectNameAsync(string name, CancellationToken cancellationToken = default(CancellationToken))
