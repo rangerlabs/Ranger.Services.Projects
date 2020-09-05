@@ -17,8 +17,8 @@ namespace Ranger.Services.Projects
         private readonly Func<string, ProjectUsersRepository> _projectUsersRepositoryFactory;
         private readonly IProjectUniqueContraintRepository _projectUniqueContraintRepository;
         private readonly IIdentityHttpClient _identityClient;
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
         private readonly ILogger<ProjectsService> _logger;
-        private readonly IDatabase _redisDb;
 
         public ProjectsService(
             Func<string, ProjectsRepository> projectsRepositoryFactory,
@@ -33,8 +33,8 @@ namespace Ranger.Services.Projects
             this._projectUsersRepositoryFactory = projectUsersRepositoryFactory;
             this._projectUniqueContraintRepository = projectUniqueContraintRepository;
             this._identityClient = identityClient;
+            this._connectionMultiplexer = connectionMultiplexer;
             this._logger = logger;
-            _redisDb = connectionMultiplexer.GetDatabase();
         }
 
         public async Task<IEnumerable<ProjectResponseModel>> GetAllProjects(string tenantId, CancellationToken cancellationToken = default(CancellationToken))
@@ -99,18 +99,21 @@ namespace Ranger.Services.Projects
 
         public async Task<string> GetTenantIdOrDefaultFromRedisByHashedApiKeyAsync(string hashedApiKey)
         {
-            return await _redisDb.StringGetAsync(RedisKeys.GetTenantId(hashedApiKey));
+            var redisDb = _connectionMultiplexer.GetDatabase();
+            return await redisDb.StringGetAsync(RedisKeys.GetTenantId(hashedApiKey));
         }
 
         public async Task SetTenantIdInRedisByHashedApiKey(string hashedApiKey, string tenantId)
         {
-            await _redisDb.StringSetAsync(RedisKeys.GetTenantId(hashedApiKey), tenantId);
+            var redisDb = _connectionMultiplexer.GetDatabase();
+            await redisDb.StringSetAsync(RedisKeys.GetTenantId(hashedApiKey), tenantId);
             _logger.LogDebug("TenantId added to cache");
         }
 
         public async Task RemoveTenantIdFromRedisByHashedApiKey(string hashedApiKey)
         {
-            await _redisDb.KeyDeleteAsync(RedisKeys.GetTenantId(hashedApiKey));
+            var redisDb = _connectionMultiplexer.GetDatabase();
+            await redisDb.KeyDeleteAsync(RedisKeys.GetTenantId(hashedApiKey));
             _logger.LogDebug("TenantId removed from cache");
         }
     }
