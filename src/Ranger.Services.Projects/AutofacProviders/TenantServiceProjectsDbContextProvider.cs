@@ -16,11 +16,13 @@ namespace Ranger.Services.Projects
         private readonly IDatabase redisDb;
         private readonly ILogger<TenantServiceDbContextProvider> logger;
         private readonly CloudSqlOptions cloudSqlOptions;
+        private readonly ILoggerFactory loggerFactory;
 
-        public TenantServiceDbContextProvider(IConnectionMultiplexer connectionMultiplexer, ITenantsHttpClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILogger<TenantServiceDbContextProvider> logger)
+        public TenantServiceDbContextProvider(IConnectionMultiplexer connectionMultiplexer, ITenantsHttpClient tenantsClient, CloudSqlOptions cloudSqlOptions, ILoggerFactory loggerFactory)
         {
             this.cloudSqlOptions = cloudSqlOptions;
-            this.logger = logger;
+            this.loggerFactory = loggerFactory;
+            this.logger = loggerFactory.CreateLogger<TenantServiceDbContextProvider>();
             this.tenantsClient = tenantsClient;
             redisDb = connectionMultiplexer.GetDatabase();
         }
@@ -51,6 +53,7 @@ namespace Ranger.Services.Projects
 
             var options = new DbContextOptionsBuilder<T>();
             options.UseNpgsql(connectionBuilder.ToString());
+            options.UseLoggerFactory(loggerFactory);
             return (options.Options, contextTenant);
         }
     }
