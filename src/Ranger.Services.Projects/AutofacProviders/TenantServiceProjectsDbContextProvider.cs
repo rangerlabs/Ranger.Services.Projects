@@ -12,8 +12,8 @@ namespace Ranger.Services.Projects
 {
     public class TenantServiceDbContextProvider
     {
+        private readonly IConnectionMultiplexer connectionMultiplexer;
         private readonly ITenantsHttpClient tenantsClient;
-        private readonly IDatabase redisDb;
         private readonly ILogger<TenantServiceDbContextProvider> logger;
         private readonly CloudSqlOptions cloudSqlOptions;
         private readonly ILoggerFactory loggerFactory;
@@ -23,8 +23,8 @@ namespace Ranger.Services.Projects
             this.cloudSqlOptions = cloudSqlOptions;
             this.loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger<TenantServiceDbContextProvider>();
+            this.connectionMultiplexer = connectionMultiplexer;
             this.tenantsClient = tenantsClient;
-            redisDb = connectionMultiplexer.GetDatabase();
         }
 
         public (DbContextOptions<T> options, ContextTenant contextTenant) GetDbContextOptions<T>(string tenantId)
@@ -35,6 +35,8 @@ namespace Ranger.Services.Projects
             var tenantDbKey = RedisKeys.TenantDbPassword(tenantId);
 
             ContextTenant contextTenant = null;
+            logger.LogDebug("Attempting to retrieve tenant password from cache");
+            var redisDb = connectionMultiplexer.GetDatabase();
             string redisValue = redisDb.StringGet(tenantDbKey);
             if (string.IsNullOrWhiteSpace(redisValue))
             {

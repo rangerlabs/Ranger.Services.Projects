@@ -26,6 +26,7 @@ namespace Ranger.Services.Projects.Data
             this.contextTenant = contextTenant;
             this.context = context;
             this.logger = logger;
+            logger.LogDebug("Projects Repository intantiated");
         }
 
         public async Task AddProjectAsync(string userEmail, string eventName, Project project)
