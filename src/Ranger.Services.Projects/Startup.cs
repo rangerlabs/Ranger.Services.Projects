@@ -115,7 +115,7 @@ namespace Ranger.Services.Projects
                 var (dbContextOptions, contextTenant) = provider.GetDbContextOptions<ProjectsDbContext>(p.TypedAs<string>());
                 return new ProjectsRepository(contextTenant, new ProjectsDbContext(dbContextOptions), c.Resolve<ILogger<ProjectsRepository>>());
             });
-            builder.AddRabbitMq<Startup, ProjectsDbContext>();
+            builder.AddRabbitMqWithOutbox<Startup, ProjectsDbContext>();
         }
 
         public void Configure(IApplicationBuilder app, IHostApplicationLifetime applicationLifetime)
