@@ -2,10 +2,11 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Ranger.Common;
+using Ranger.RabbitMQ;
 
 namespace Ranger.Services.Projects.Data
 {
-    public class ProjectsDbContext : DbContext, IDataProtectionKeyContext
+    public class ProjectsDbContext : DbContext, IDataProtectionKeyContext, IOutboxStore
     {
         public delegate ProjectsDbContext Factory(DbContextOptions<ProjectsDbContext> options);
 
@@ -19,6 +20,7 @@ namespace Ranger.Services.Projects.Data
         public DbSet<ProjectStream> ProjectStreams { get; set; }
         public DbSet<ProjectUniqueConstraint> ProjectUniqueConstraints { get; set; }
         public DbSet<ProjectUser> ProjectUsers { get; set; }
+        public DbSet<OutboxMessage> Outbox { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
