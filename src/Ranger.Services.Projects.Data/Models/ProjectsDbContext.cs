@@ -20,7 +20,8 @@ namespace Ranger.Services.Projects.Data
         public DbSet<ProjectStream> ProjectStreams { get; set; }
         public DbSet<ProjectUniqueConstraint> ProjectUniqueConstraints { get; set; }
         public DbSet<ProjectUser> ProjectUsers { get; set; }
-        public DbSet<OutboxMessage> Outbox { get; set; }
+        public DbSet<OutboxMessage> OutboxMessages { get; set; }
+        public DbSet<RangerRabbitMessage> RangerRabbitMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
