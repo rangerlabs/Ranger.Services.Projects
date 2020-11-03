@@ -30,8 +30,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="3.1.7" />
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Ranger.Monitoring" version="3.2.4" />
-    <PackageReference Include="Ranger.ApiUtilities" Version="3.6.2" />
-    <PackageReference Include="Ranger.InternalHttpClient" Version="5.1.4" />
+    <PackageReference Include="Ranger.ApiUtilities" Version="3.7.5" />
+    <PackageReference Include="Ranger.InternalHttpClient" Version="5.1.5" />
     <PackageReference Include="Ranger.Redis" version="1.0.4" />
   </ItemGroup>
   <ItemGroup>
