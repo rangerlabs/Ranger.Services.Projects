@@ -8,7 +8,7 @@ namespace Ranger.Services.Projects.Data
     public class ProjectStream : IEventStreamDbSet
     {
         [Required]
-        [StringLength(36)]
+        [StringLength(41)]
         public string TenantId { get; set; }
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

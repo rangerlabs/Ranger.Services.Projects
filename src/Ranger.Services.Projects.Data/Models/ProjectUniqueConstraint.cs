@@ -14,7 +14,7 @@ namespace Ranger.Services.Projects.Data
         public Guid ProjectId { get; set; }
 
         [Required]
-        [StringLength(36)]
+        [StringLength(41)]
         public string TenantId { get; set; }
 
         [Required]
